@@ -1,9 +1,9 @@
-use crate::*;
+use super::*;
 
 pub struct TransitionTable {
     initial: State,
     state_names: Vec<String>,
-    transitions: Vec<SymbolMap<State>>,
+    // transitions: Vec<SymbolMap<State>>,
     final_states: Vec<bool>,
 }
 

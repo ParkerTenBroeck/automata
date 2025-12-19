@@ -1,3 +1,5 @@
+use crate::loader::{Span, Spanned};
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Token<'a> {
     LPar,
@@ -51,22 +53,6 @@ impl<'a> std::fmt::Display for Token<'a> {
     }
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-pub struct Span(pub usize, pub usize);
-impl Span {
-    pub fn join(&self, end: Span) -> Span {
-        Span(self.0, end.1)
-    }
-}
-
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-pub struct Spanned<T>(pub T, pub Span);
-impl<T> Spanned<T> {
-    pub fn map<R>(self, map: impl Fn(T) -> R) -> Spanned<R> {
-        Spanned(map(self.0), self.1)
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct Lexer<'a> {
     input: &'a str,
@@ -111,6 +97,18 @@ impl<'a> Lexer<'a> {
     pub fn eof_span(&self) -> Span {
         Span(self.input.len(), self.input.len())
     }
+
+    pub fn input(&self) -> &'a str {
+        self.input
+    }
+}
+
+fn begin_ident(c: char) -> bool {
+    c.is_alphabetic() || c == '_' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
+}
+
+fn continue_ident(c: char) -> bool {
+    c.is_alphanumeric() || c == '_' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
 }
 
 impl<'a> std::iter::Iterator for Lexer<'a> {
@@ -177,9 +175,9 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                 None => Err(Error::InvalidChar('/')),
             },
 
-            c if c.is_alphabetic() || c == '_' => loop {
+            c if begin_ident(c) => loop {
                 match self.consume() {
-                    Some(c) if c.is_alphanumeric() || c == '_' => {}
+                    Some(c) if continue_ident(c) => {}
                     Some(_) => {
                         self.backtrack();
                         break Ok(Token::Ident(&self.input[self.start..self.position]));

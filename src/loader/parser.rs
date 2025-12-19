@@ -1,30 +1,14 @@
-use std::{iter::Peekable};
-use crate::ast::*;
-use crate::lexer::{Lexer, Span, Spanned, Token};
+use crate::loader::log::{LogEntryDisplay, Logs};
+use crate::loader::{Span, Spanned};
 
-
-
-pub enum LogKind {
-    Lexer,
-    UnexpectedToken,
-}
-
-pub enum LogLevel {
-    Info,
-    Warning,
-    Error,
-}
-
-pub struct Log {
-    pub message: String,
-    pub range: Span,
-    pub level: LogLevel,
-    pub kind: LogKind,
-}
+use super::ast::*;
+use super::lexer::{Lexer, Token};
+use std::iter::Peekable;
 
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
-    log: Vec<Log>,
+    logs: Logs<'a>,
+    src: &'a str,
     eof: Span,
 }
 
@@ -32,8 +16,9 @@ impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         Parser {
             eof: lexer.eof_span(),
+            src: lexer.input(),
+            logs: Logs::new(lexer.input()),
             lexer: lexer.peekable(),
-            log: Vec::new(),
         }
     }
 
@@ -42,12 +27,7 @@ impl<'a> Parser<'a> {
             match self.lexer.next()? {
                 Spanned(Ok(Token::Comment(_)), _) => {}
                 Spanned(Ok(ok), r) => return Some(Spanned(ok, r)),
-                Spanned(Err(err), r) => self.log.push(Log {
-                    message: format!("{err:?}"),
-                    range: r,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                }),
+                Spanned(Err(err), span) => self.logs.emit_error(format!("lexer: {err:?}"), span),
             }
         }
     }
@@ -56,36 +36,25 @@ impl<'a> Parser<'a> {
         loop {
             match *self.lexer.peek()? {
                 Spanned(Ok(ok), r) => return Some(Spanned(ok, r)),
-                Spanned(Err(err), r) => self.log.push(Log {
-                    message: format!("{err:?}"),
-                    range: r,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                }),
+                Spanned(Err(err), span) => self.logs.emit_error(format!("lexer: {err:?}"), span),
             }
         }
     }
 
     fn expect_token(&mut self, expected: Token<'a>) -> (bool, Span) {
-        if let Some(Spanned(token, range)) = self.next_token() {
+        if let Some(Spanned(token, span)) = self.next_token() {
             if token != expected {
-                self.log.push(Log {
-                    message: format!("unexpected token {:#}, expected {:}", token, expected),
-                    range,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
-                (false, range)
+                self.logs.emit_error(
+                    format!("unexpected token {:#}, expected {:}", token, expected),
+                    span,
+                );
+                (false, span)
             } else {
-                (true, range)
+                (true, span)
             }
         } else {
-            self.log.push(Log {
-                message: format!("unexpected eof expected {:#}", expected),
-                range: self.eof,
-                level: LogLevel::Error,
-                kind: LogKind::Lexer,
-            });
+            self.logs
+                .emit_error(format!("unexpected eof expected {:#}", expected), self.eof);
             (false, self.eof)
         }
     }
@@ -94,33 +63,29 @@ impl<'a> Parser<'a> {
         match self.next_token() {
             Some(Spanned(Token::Tilde, r)) => Spanned(Symbol::Epsilon, r),
             Some(Spanned(Token::Ident("epsilon"), r)) => Spanned(Symbol::Epsilon, r),
-            Some(Spanned(Token::Ident("ε"), r)) => Spanned(Symbol::Epsilon, r),
+            Some(Spanned(Token::Ident(super::EPSILON_LOWER), r)) => Spanned(Symbol::Epsilon, r),
             Some(Spanned(Token::Ident(ident), r)) => Spanned(Symbol::Ident(ident), r),
-            Some(Spanned(got, r)) => {
-                self.log.push(Log {
-                    message: format!(
+            Some(Spanned(got, span)) => {
+                self.logs.emit_error(
+                    format!(
                         "unexpected token {:#}, expected {:}|{:}",
                         got,
                         Token::Tilde,
                         Token::Ident("")
                     ),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
-                Spanned(Symbol::Ident("<INVALID>"), r)
+                    span,
+                );
+                Spanned(Symbol::Ident("<INVALID>"), span)
             }
             None => {
-                self.log.push(Log {
-                    message: format!(
+                self.logs.emit_error(
+                    format!(
                         "unexpected eof expected {:}|{:}",
                         Token::Tilde,
                         Token::Ident("")
                     ),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
+                    self.eof,
+                );
                 Spanned(Symbol::Ident("<INVALID>"), self.eof)
             }
         }
@@ -134,17 +99,15 @@ impl<'a> Parser<'a> {
         }
 
         while !matches!(self.peek_token(), Some(Spanned(Token::RPar, _))) {
-            items.push(self.parse_symbol());
+            items.push(self.parse_item());
             if matches!(self.peek_token(), Some(Spanned(Token::Comma, _))) {
                 self.next_token();
             }
             if self.peek_token().is_none() {
-                self.log.push(Log {
-                    message: format!("unexpected eof expected {:}", Token::RPar),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
+                self.logs.emit_error(
+                    format!("unexpected eof expected {:}", Token::RPar),
+                    self.eof,
+                );
                 break;
             }
         }
@@ -160,36 +123,34 @@ impl<'a> Parser<'a> {
                 self.parse_symbol().map(Item::Symbol)
             }
             Some(Spanned(Token::LPar, _)) => self.parse_tupple().map(Item::Tuple),
-            Some(Spanned(Token::LBrace, _)) => self.parse_list().map(Item::List),
-            Some(Spanned(got, r)) => {
-                self.log.push(Log {
-                    message: format!(
-                        "unexpected token {:#}, expected {:}|{:}|{:}|{:}",
+            Some(Spanned(Token::LBrace | Token::LBracket, _)) => self.parse_list().map(Item::List),
+            Some(Spanned(got, span)) => {
+                self.logs.emit_error(
+                    format!(
+                        "unexpected token {:#}, expected {:}|{:}|{:}|{:}|{:}",
                         got,
                         Token::Tilde,
                         Token::Ident(""),
                         Token::LPar,
-                        Token::LBrace
+                        Token::LBrace,
+                        Token::LBracket,
                     ),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
-                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), r)
+                    span,
+                );
+                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), span)
             }
             None => {
-                self.log.push(Log {
-                    message: format!(
-                        "unexpected eof expected {:}|{:}|{:}|{:}",
+                self.logs.emit_error(
+                    format!(
+                        "unexpected eof expected {:}|{:}|{:}|{:}|{:}",
                         Token::Tilde,
                         Token::Ident(""),
                         Token::LPar,
-                        Token::LBrace
+                        Token::LBrace,
+                        Token::LBracket,
                     ),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
+                    self.eof,
+                );
                 Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), self.eof)
             }
         }
@@ -197,35 +158,55 @@ impl<'a> Parser<'a> {
 
     pub fn parse_list(&mut self) -> Spanned<List<'a>> {
         let mut list = Vec::new();
-        let (matched, start) = self.expect_token(Token::LBrace);
-        if !matched {
-            return Spanned(List(Vec::new()), start);
-        }
 
-        while !matches!(self.peek_token(), Some(Spanned(Token::RBrace, _))) {
+        let (start, match_end) = match self.next_token() {
+            Some(Spanned(Token::LBrace, r)) => (r, Token::RBrace),
+            Some(Spanned(Token::LBracket, r)) => (r, Token::RBracket),
+            Some(Spanned(got, span)) => {
+                self.logs.emit_error(
+                    format!(
+                        "unexpected token {:#}, expected {:}|{:}",
+                        got,
+                        Token::RBrace,
+                        Token::RBracket
+                    ),
+                    span,
+                );
+                return Spanned(List(Vec::new()), span);
+            }
+            None => {
+                self.logs.emit_error(
+                    format!(
+                        "unexpected eof expected {:}|{:}",
+                        Token::RBrace,
+                        Token::RBracket
+                    ),
+                    self.eof,
+                );
+                return Spanned(List(Vec::new()), self.eof);
+            }
+        };
+
+        while self.peek_token().map(|t| t.0) != Some(match_end) {
             list.push(self.parse_item());
             if matches!(self.peek_token(), Some(Spanned(Token::Comma, _))) {
                 self.next_token();
             }
             if self.peek_token().is_none() {
-                self.log.push(Log {
-                    message: format!("unexpected eof expected {:}", Token::RBrace),
-                    range: self.eof,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                });
+                self.logs
+                    .emit_error(format!("unexpected eof expected {:}", match_end), self.eof);
                 break;
             }
         }
-        let (_, end) = self.expect_token(Token::RBrace);
+        let (_, end) = self.expect_token(match_end);
         Spanned(List(list), start.join(end))
     }
 
-    pub fn parse_regex(&mut self) -> Spanned<Regex<'a>>{
+    pub fn parse_regex(&mut self) -> Spanned<Regex<'a>> {
         todo!()
     }
 
-    pub fn parse_elements(&mut self) -> Vec<Spanned<TopLevel<'a>>> {
+    pub fn parse_elements(mut self) -> (Vec<Spanned<TopLevel<'a>>>, Logs<'a>) {
         let mut result = Vec::new();
 
         loop {
@@ -240,7 +221,10 @@ impl<'a> Parser<'a> {
                     let span = start.join(item.1);
                     result.push(Spanned(TopLevel::Assignment(dest, item), span));
                 }
-                (Spanned(Token::Ident(_), _), Some(Spanned(Token::LSmallArrow|Token::Ident(_), _))) => {
+                (
+                    Spanned(Token::Ident(_), _),
+                    Some(Spanned(Token::LSmallArrow | Token::Ident(_), _)),
+                ) => {
                     todo!()
                 }
                 (Spanned(Token::Ident(ident), start), _) => {
@@ -250,18 +234,21 @@ impl<'a> Parser<'a> {
                     let span = start.join(item.1);
                     result.push(Spanned(TopLevel::Assignment(dest, item), span));
                 }
-                _ => self.log.push(Log {
-                    message: format!(
+                _ => self.logs.emit_error(
+                    format!(
                         "unexpected token {:#}, expected {:}",
                         next.0,
                         Token::Ident("")
                     ),
-                    range: next.1,
-                    level: LogLevel::Error,
-                    kind: LogKind::Lexer,
-                }),
+                    next.1,
+                ),
             }
         }
-        result
+
+        (result, self.logs)
+    }
+
+    pub fn logs(&self) -> impl Iterator<Item = LogEntryDisplay<'_>> {
+        self.logs.displayable()
     }
 }

@@ -1,0 +1,19 @@
+
+Q = {q0, q1} // states
+E = {a, b} // alphabet
+T = {z0, A, B} // stack 
+I = q0
+
+// construct all possible permutations of A's and B's
+d(q0, epsilon, z0)  =   { (q0, [A z0]), (q0, [B z0]) }
+d(q0, epsilon, A)   =   { (q0, [A A]),  (q0, [B A])  }
+d(q0, epsilon, B)   =   { (q0, [A B]),  (q0, [B B])  }
+
+// transition to q1
+d(q0, epsilon, z0)={ (q1, z0) }
+d(q0, epsilon, A)={ (q1, A) }
+d(q0, epsilon, B)={ (q1, B) }
+
+// consume stack until empty
+d(q1, a, A)={(q1, epsilon)}
+d(q1, b, B)={(q1, epsilon)}

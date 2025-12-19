@@ -1,7 +1,20 @@
-use automata::{lexer::Lexer, parser::Parser};
+use automata::automata::npda;
 
 fn main() {
-    let input = include_str!("../example.txt");
+    let input = include_str!("../example.npda");
 
-    println!("{:#?}", Parser::new(Lexer::new(input)).parse_elements());
+    let table = match npda::TransitionTable::load_table(input) {
+        Ok((ok, logs)) => {
+            for log in logs.displayable() {
+                println!("{log}")
+            }
+            ok
+        }
+        Err(logs) => {
+            for log in logs.displayable() {
+                println!("{log}")
+            }
+            return;
+        }
+    };
 }
