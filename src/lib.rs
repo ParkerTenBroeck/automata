@@ -1,6 +1,7 @@
 pub mod dfa;
 pub mod lexer;
 pub mod parser;
+pub mod ast;
 
 pub struct SymbolMap<T>([T; 256]);
 
