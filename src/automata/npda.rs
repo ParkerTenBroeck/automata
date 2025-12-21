@@ -6,6 +6,7 @@ use super::*;
 struct To(State, Vec<Symbol>);
 
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct TransitionTable {
     initial_state: State,
     initial_stack: Symbol,

@@ -3,25 +3,24 @@ use crate::loader::{Span, Spanned};
 
 use super::ast::*;
 use super::lexer::{Lexer, Token};
-use std::iter::Peekable;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     peek: Option<Spanned<Token<'a>>>,
     logs: Logs<'a>,
-    src: &'a str,
-    eof: Span,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         Parser {
-            eof: lexer.eof_span(),
-            src: lexer.input(),
             logs: Logs::new(lexer.input()),
             peek: None,
             lexer,
         }
+    }
+
+    pub fn eof(&self) -> Span{
+        self.lexer.eof_span()
     }
 
     fn next_token(&mut self) -> Option<Spanned<Token<'a>>> {
@@ -57,8 +56,8 @@ impl<'a> Parser<'a> {
             }
         } else {
             self.logs
-                .emit_error(format!("unexpected eof expected {:#}", expected), self.eof);
-            (false, self.eof)
+                .emit_error(format!("unexpected eof expected {:#}", expected), self.eof());
+            (false, self.eof())
         }
     }
 
@@ -87,9 +86,9 @@ impl<'a> Parser<'a> {
                         Token::Tilde,
                         Token::Ident("")
                     ),
-                    self.eof,
+                    self.eof(),
                 );
-                Spanned(Symbol::Ident("<INVALID>"), self.eof)
+                Spanned(Symbol::Ident("<INVALID>"), self.eof())
             }
         }
     }
@@ -109,7 +108,7 @@ impl<'a> Parser<'a> {
             if self.peek_token().is_none() {
                 self.logs.emit_error(
                     format!("unexpected eof expected {:}", Token::RPar),
-                    self.eof,
+                    self.eof(),
                 );
                 break;
             }
@@ -153,9 +152,9 @@ impl<'a> Parser<'a> {
                         Token::LBrace,
                         Token::LBracket,
                     ),
-                    self.eof,
+                    self.eof(),
                 );
-                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), self.eof)
+                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), self.eof())
             }
         }
     }
@@ -185,9 +184,9 @@ impl<'a> Parser<'a> {
                         Token::RBrace,
                         Token::RBracket
                     ),
-                    self.eof,
+                    self.eof(),
                 );
-                return Spanned(List(Vec::new()), self.eof);
+                return Spanned(List(Vec::new()), self.eof());
             }
         };
 
@@ -198,7 +197,7 @@ impl<'a> Parser<'a> {
             }
             if self.peek_token().is_none() {
                 self.logs
-                    .emit_error(format!("unexpected eof expected {:}", match_end), self.eof);
+                    .emit_error(format!("unexpected eof expected {:}", match_end), self.eof());
                 break;
             }
         }

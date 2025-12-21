@@ -112,14 +112,14 @@ impl<'a> Spanned<Item<'a>> {
 }
 
 impl<'a, 'b> Spanned<&'b Tuple<'a>> {
-    pub fn expect_dfa_transition(&self, logs: &mut Logs<'a>) -> ! {
+    pub fn expect_dfa_transition(&self, _: &mut Logs<'a>) -> ! {
         todo!()
     }
-    pub fn expect_nfa_transition(&self, logs: &mut Logs<'a>) -> ! {
+    pub fn expect_nfa_transition(&self, _: &mut Logs<'a>) -> ! {
         todo!()
     }
 
-    pub fn expect_dpda_transition(&self, logs: &mut Logs<'a>) -> ! {
+    pub fn expect_dpda_transition(&self, _: &mut Logs<'a>) -> ! {
         todo!()
     }
 
@@ -162,10 +162,10 @@ impl<'a, 'b> Spanned<&'b Tuple<'a>> {
         None
     }
 
-    pub fn expect_tm_transition(&self, logs: &mut Logs<'a>) -> ! {
+    pub fn expect_tm_transition(&self, _: &mut Logs<'a>) -> ! {
         todo!()
     }
-    pub fn expect_ntm_transition(&self, logs: &mut Logs<'a>) -> ! {
+    pub fn expect_ntm_transition(&self, _: &mut Logs<'a>) -> ! {
         todo!()
     }
 }
