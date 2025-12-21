@@ -6,7 +6,8 @@ use super::lexer::{Lexer, Token};
 use std::iter::Peekable;
 
 pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a>>,
+    lexer: Lexer<'a>,
+    peek: Option<Spanned<Token<'a>>>,
     logs: Logs<'a>,
     src: &'a str,
     eof: Span,
@@ -18,11 +19,15 @@ impl<'a> Parser<'a> {
             eof: lexer.eof_span(),
             src: lexer.input(),
             logs: Logs::new(lexer.input()),
-            lexer: lexer.peekable(),
+            peek: None,
+            lexer,
         }
     }
 
     fn next_token(&mut self) -> Option<Spanned<Token<'a>>> {
+        if self.peek.is_some(){
+            return self.peek.take()
+        }
         loop {
             match self.lexer.next()? {
                 Spanned(Ok(Token::Comment(_)), _) => {}
@@ -33,12 +38,10 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_token(&mut self) -> Option<Spanned<Token<'a>>> {
-        loop {
-            match *self.lexer.peek()? {
-                Spanned(Ok(ok), r) => return Some(Spanned(ok, r)),
-                Spanned(Err(err), span) => self.logs.emit_error(format!("lexer: {err:?}"), span),
-            }
+        if self.peek.is_none(){
+            self.peek = self.next_token();
         }
+        self.peek
     }
 
     fn expect_token(&mut self, expected: Token<'a>) -> (bool, Span) {
@@ -125,6 +128,7 @@ impl<'a> Parser<'a> {
             Some(Spanned(Token::LPar, _)) => self.parse_tupple().map(Item::Tuple),
             Some(Spanned(Token::LBrace | Token::LBracket, _)) => self.parse_list().map(Item::List),
             Some(Spanned(got, span)) => {
+                self.next_token();
                 self.logs.emit_error(
                     format!(
                         "unexpected token {:#}, expected {:}|{:}|{:}|{:}|{:}",

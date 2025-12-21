@@ -26,10 +26,18 @@ impl<'a> Logs<'a> {
         self.logs.push(entry);
     }
 
+    pub fn emit_error_locless(&mut self, msg: impl Into<String>) {
+        self.emit(LogEntry {
+            message: msg.into(),
+            span: None,
+            level: LogLevel::Error,
+        });
+    }
+
     pub fn emit_error(&mut self, msg: impl Into<String>, span: Span) {
         self.emit(LogEntry {
             message: msg.into(),
-            span,
+            span: Some(span),
             level: LogLevel::Error,
         });
     }
@@ -37,7 +45,15 @@ impl<'a> Logs<'a> {
     pub fn emit_warning(&mut self, msg: impl Into<String>, span: Span) {
         self.emit(LogEntry {
             message: msg.into(),
-            span,
+            span: Some(span),
+            level: LogLevel::Warning,
+        });
+    }
+
+    pub fn emit_warning_locless(&mut self, msg: impl Into<String>) {
+        self.emit(LogEntry {
+            message: msg.into(),
+            span: None,
             level: LogLevel::Warning,
         });
     }
@@ -45,7 +61,7 @@ impl<'a> Logs<'a> {
     pub fn emit_info(&mut self, msg: impl Into<String>, span: Span) {
         self.emit(LogEntry {
             message: msg.into(),
-            span,
+            span: Some(span),
             level: LogLevel::Info,
         });
     }
@@ -66,7 +82,7 @@ pub enum LogLevel {
 
 pub struct LogEntry {
     pub message: String,
-    pub span: Span,
+    pub span: Option<Span>,
     pub level: LogLevel,
 }
 
@@ -93,61 +109,53 @@ impl<'a> Display for LogEntryDisplay<'a> {
         }
         writeln!(f, "{}{RESET}", self.entry.message)?;
 
-        let line_start = self
-            .src
-            .get(..=self.entry.span.0)
-            .unwrap_or("")
-            .lines()
-            .count();
-        let line_end = self
-            .src
-            .get(..self.entry.span.1)
-            .unwrap_or("")
-            .lines()
-            .count();
+        if let Some(span) = self.entry.span {
+            let line_start = self.src.get(..=span.0).unwrap_or("").lines().count();
+            let line_end = self.src.get(..span.1).unwrap_or("").lines().count();
 
-        let padding = line_end.ilog10() as usize;
+            let padding = line_end.ilog10() as usize;
 
-        let start = self
-            .src
-            .get(..self.entry.span.0)
-            .and_then(|s| s.rfind('\n'))
-            .map(|v| v + 1)
-            .unwrap_or(0);
+            let start = self
+                .src
+                .get(..span.0)
+                .and_then(|s| s.rfind('\n'))
+                .map(|v| v + 1)
+                .unwrap_or(0);
 
-        let end = self
-            .src
-            .get(self.entry.span.1..)
-            .and_then(|s| s.find('\n'))
-            .map(|v| v + self.entry.span.1)
-            .unwrap_or(self.src.len());
+            let end = self
+                .src
+                .get(span.1..)
+                .and_then(|s| s.find('\n'))
+                .map(|v| v + span.1)
+                .unwrap_or(self.src.len());
 
-        let mut index = start;
-        for (i, line) in self.src.get(start..end).unwrap_or("").lines().enumerate() {
-            write!(f, "{BOLD}{CYAN}{:>padding$}: {RESET}", i + line_start)?;
-            for char in line.chars() {
-                if char == '\t' {
-                    write!(f, " ")?
-                } else {
-                    write!(f, "{char}")?
+            let mut index = start;
+            for (i, line) in self.src.get(start..end).unwrap_or("").lines().enumerate() {
+                write!(f, "{BOLD}{CYAN}{:>padding$}: {RESET}", i + line_start)?;
+                for char in line.chars() {
+                    if char == '\t' {
+                        write!(f, " ")?
+                    } else {
+                        write!(f, "{char}")?
+                    }
                 }
-            }
-            writeln!(f)?;
-            write!(f, "{BOLD}{CYAN}")?;
-            for _ in 0..padding + 3 {
-                write!(f, " ")?;
-            }
-            for char in line.chars() {
-                if (self.entry.span.0..self.entry.span.1).contains(&index) {
-                    write!(f, "~")?;
-                } else {
+                writeln!(f)?;
+                write!(f, "{BOLD}{CYAN}")?;
+                for _ in 0..padding + 3 {
                     write!(f, " ")?;
                 }
-                index += char.len_utf8();
+                for char in line.chars() {
+                    if (span.0..span.1).contains(&index) {
+                        write!(f, "~")?;
+                    } else {
+                        write!(f, " ")?;
+                    }
+                    index += char.len_utf8();
+                }
+                write!(f, "{RESET}")?;
+                index += '\n'.len_utf8();
+                writeln!(f)?;
             }
-            write!(f, "{RESET}")?;
-            index += '\n'.len_utf8();
-            writeln!(f)?;
         }
 
         Ok(())

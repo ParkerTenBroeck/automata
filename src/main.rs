@@ -17,4 +17,21 @@ fn main() {
             return;
         }
     };
+
+    let input = "aababaab";
+    println!("running on: '{input}'");
+    let mut simulator = npda::Simulator::begin(input, table);
+    loop {
+        match simulator.step(){
+            npda::SimulatorResult::Pending => {},
+            npda::SimulatorResult::Reject => {
+                println!("REJECTED");
+                break;
+            },
+            npda::SimulatorResult::Accept(npda) => {
+                println!("ACCEPT: {npda:?}");
+                break;
+            },
+        }
+    }
 }
