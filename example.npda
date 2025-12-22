@@ -14,8 +14,7 @@ d(q0, epsilon, B)   =   { (q0, [A B]),  (q0, [B B])  }
 // transition to q1
 d(q0, epsilon, z0)  =   { (q1, z0) }
 d(q0, epsilon, A)   =   { (q1, A)  }
-
-//d(q0, epsilon, B)   =   { (q1, B)  }
+d(q0, epsilon, B)   =   { (q1, B)  }
 
 // consume stack until empty
 d(q1, a, A)         =   { (q1, epsilon) }
