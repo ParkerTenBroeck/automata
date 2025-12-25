@@ -5,9 +5,10 @@
       # Replace llvmPackages with llvmPackages_X, where X is the latest LLVM version (at the time of writing, 16)
       llvmPackages.bintools
       rustup
-      wasm-bindgen-cli_0_2_100
+      # wasm-bindgen-cli_0_2_100
       wasm-pack
       binaryen
+      simple-http-server
     ];
     RUSTC_VERSION = "nightly";
     # https://github.com/rust-lang/rust-bindgen#environment-variables

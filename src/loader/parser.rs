@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_token(&mut self, expected: Token<'a>) -> (bool, Span) {
-        if let Some(Spanned(token, span)) = self.next_token() {
+        if let Some(Spanned(token, span)) = self.peek_token() {
             if token != expected {
                 self.logs.emit_error(
                     format!("unexpected token {:#}, expected {:}", token, expected),
@@ -52,6 +52,7 @@ impl<'a> Parser<'a> {
                 );
                 (false, span)
             } else {
+                self.next_token();
                 (true, span)
             }
         } else {
@@ -212,27 +213,26 @@ impl<'a> Parser<'a> {
     pub fn parse_elements(mut self) -> (Vec<Spanned<TopLevel<'a>>>, Logs<'a>) {
         let mut result = Vec::new();
 
-        loop {
-            let Some(next) = self.next_token() else { break };
+        while let Some(next) = self.next_token() {
             match (next, self.peek_token()) {
                 (Spanned(Token::Ident(ident), start), Some(Spanned(Token::LPar, _))) => {
                     let tuple = self.parse_tupple();
                     let span = start.join(tuple.1);
                     let dest = Spanned(Dest::Function(Spanned(ident, start), tuple), span);
-                    self.expect_token(Token::Eq);
+                    if !self.expect_token(Token::Eq).0{continue;}
                     let item = self.parse_item();
                     let span = start.join(item.1);
                     result.push(Spanned(TopLevel::Assignment(dest, item), span));
                 }
                 (
-                    Spanned(Token::Ident(_), _),
-                    Some(Spanned(Token::LSmallArrow | Token::Ident(_), _)),
+                    Spanned(Token::Ident(_), start),
+                    Some(Spanned(Token::LSmallArrow, end)),
                 ) => {
-                    todo!()
+                    self.logs.emit_error("Production rules are not yet supported", start.join(end));
                 }
                 (Spanned(Token::Ident(ident), start), _) => {
                     let dest = Spanned(Dest::Ident(ident), start);
-                    self.expect_token(Token::Eq);
+                    if !self.expect_token(Token::Eq).0{continue;}
                     let item = self.parse_item();
                     let span = start.join(item.1);
                     result.push(Spanned(TopLevel::Assignment(dest, item), span));

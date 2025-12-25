@@ -72,6 +72,18 @@ impl<'a> Logs<'a> {
             entry,
         })
     }
+
+    pub fn entries(&self) -> &[LogEntry]{
+        &self.logs
+    }
+
+    pub fn into_entries(self) -> impl Iterator<Item = LogEntry>{
+        self.logs.into_iter()
+    }
+
+    pub fn src(&self) -> &str{
+        &self.src
+    }
 }
 
 pub enum LogLevel {

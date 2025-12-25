@@ -1,0 +1,15 @@
+{
+  "name": "automata-web",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "automata_bg.wasm",
+    "automata.js",
+    "automata_bg.js"
+  ],
+  "main": "automata.js",
+  "sideEffects": [
+    "./automata.js",
+    "./snippets/*"
+  ]
+}

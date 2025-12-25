@@ -1,0 +1,372 @@
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #909090;
+}
+
+.wrap {
+    height: 100vh;
+    width: 100vw;
+    display: grid;
+    grid-template-rows: var(--topH, 50vh) 8px 1fr;
+    /* top pane, splitter, editor */
+    overflow: hidden;
+}
+
+/* Top pane: terminal area */
+.topPane {
+    display: grid;
+    grid-template-columns: var(--termW, 50vw) 8px 1fr;
+    /* terminal, splitter, filler */
+    min-height: 80px;
+    overflow: hidden;
+}
+
+/* Bottom pane: editor */
+.bottomPane {
+    min-height: 120px;
+    overflow: hidden;
+}
+
+/* Make editor fill its pane */
+#editor {
+    height: 100%;
+    width: 100%;
+}
+
+
+.terminal {
+    background: #0b0f14;
+    color: #c9d1d9;
+    padding: 1em;
+    margin: 0px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ANSI text styles */
+.ansi-bold { font-weight: 700; }
+.ansi-dim { opacity: 0.7; }
+
+/* Foreground colors (standard + bright) */
+.ansi-fg-30 { color: #0b0f14; }  /* black */
+.ansi-fg-31 { color: #ff7b72; }  /* red */
+.ansi-fg-32 { color: #7ee787; }  /* green */
+.ansi-fg-33 { color: #f2cc60; }  /* yellow */
+.ansi-fg-34 { color: #79c0ff; }  /* blue */
+.ansi-fg-35 { color: #d2a8ff; }  /* magenta */
+.ansi-fg-36 { color: #a5d6ff; }  /* cyan */
+.ansi-fg-37 { color: #c9d1d9; }  /* white */
+
+.ansi-fg-90 { color: #6e7681; }  /* bright black / gray */
+.ansi-fg-91 { color: #ffa198; }
+.ansi-fg-92 { color: #a6f3a6; }
+.ansi-fg-93 { color: #ffe082; }
+.ansi-fg-94 { color: #a5d6ff; }
+.ansi-fg-95 { color: #e3b8ff; }
+.ansi-fg-96 { color: #c7f0ff; }
+.ansi-fg-97 { color: #ffffff; }
+
+/* Background colors (optional) */
+.ansi-bg-40 { background: #0b0f14; }
+.ansi-bg-41 { background: rgba(255, 123, 114, 0.22); }
+.ansi-bg-42 { background: rgba(126, 231, 135, 0.18); }
+.ansi-bg-43 { background: rgba(242, 204, 96, 0.18); }
+.ansi-bg-44 { background: rgba(121, 192, 255, 0.18); }
+.ansi-bg-45 { background: rgba(210, 168, 255, 0.18); }
+.ansi-bg-46 { background: rgba(165, 214, 255, 0.18); }
+.ansi-bg-47 { background: rgba(201, 209, 217, 0.10); }
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+/* App layout */
+.app {
+    height: 100vh;
+    width: 100vw;
+    display: grid;
+    grid-template-rows: var(--canvasH, 35vh) 8px 1fr;
+    overflow: hidden;
+}
+
+/* ---------- Canvas ---------- */
+.canvasPane {
+    position: relative;
+    overflow: hidden;
+    background: #111;
+}
+
+#canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ---------- Bottom area (terminal + editor) ---------- */
+/* Bottom area (terminal + editor) */
+.bottomPane {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 8px var(--termW, 40vw);
+    overflow: hidden;
+    /* IMPORTANT */
+}
+
+/* Terminal side */
+.terminalPane {
+    height: 100%;
+    overflow: hidden;
+}
+
+.terminal {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    /* terminal scrolls */
+    overflow-x: auto;
+}
+
+/* Editor side */
+.editorPane {
+    height: 100%;
+    overflow: hidden;
+    /* let CodeMirror scroll */
+}
+
+/* CodeMirror mount point */
+#editor {
+    height: 100%;
+    width: 100%;
+}
+
+/* VERY IMPORTANT: force CodeMirror to respect container height */
+.cm-editor {
+    height: 100%;
+}
+
+/* CodeMirror’s internal scroller (this is where the scrollbar lives) */
+.cm-scroller {
+    overflow-y: auto !important;
+}
+
+/* ---------- Splitters ---------- */
+.hSplit {
+    cursor: row-resize;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.vSplit {
+    cursor: col-resize;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.hSplit:hover,
+.vSplit:hover {
+    background: rgba(121, 192, 255, 0.25);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.diag {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.diag li {
+    margin: 6px 0;
+}
+
+/* --- Syntax colors via CSS classes applied by decorations --- */
+.tok-comment {
+    color: #1a7b24;
+}
+
+.tok-keyword {
+    color: #b99400;
+    font-weight: 600;
+}
+
+.tok-error {
+    color: #ff0505;
+    font-weight: 1000;
+}
+
+.tok-ident {
+    color: #90d4e0;
+}
+
+.tok-brace {
+    color: #d73a49;
+    font-weight: 600;
+}
+
+.tok-punc {
+    color: #ffffff;
+}
+
+.tok-string {
+    color: #03621e;
+}
+
+/* Rainbow bracket depth classes */
+.rb-0 {
+    color: #a35;
+    font-weight: 700;
+}
+
+.rb-1 {
+    color: #ed0;
+    font-weight: 700;
+}
+
+.rb-2 {
+    color: #9d5;
+    font-weight: 700;
+}
+
+.rb-3 {
+    color: #2cb;
+    font-weight: 700;
+}
+
+.rb-4 {
+    color: #36b;
+    font-weight: 700;
+}
+
+.rb-5 {
+    color: #639;
+    font-weight: 700;
+}
+
+/* Severity underline styles */
+.cm-diag-error {
+    text-decoration: underline wavy #d73a49;
+    /* red */
+    text-underline-offset: 2px;
+}
+
+.cm-diag-warning {
+    text-decoration: underline wavy #ffd33d;
+    /* yellow */
+    text-underline-offset: 2px;
+}
+
+.cm-diag-info {
+    text-decoration: underline wavy #79c0ff;
+    /* cyan-ish */
+    text-underline-offset: 2px;
+}
+
+/* Tooltip title coloring by severity */
+.tipTitle.error {
+    color: #d73a49;
+}
+
+.tipTitle.warning {
+    color: #ffd33d;
+}
+
+.tipTitle.info {
+    color: #79c0ff;
+}
+
+/* Optional: diagnostics panel coloring */
+.diag li.error {
+    color: #d73a49;
+}
+
+.diag li.warning {
+    color: #b08800;
+}
+
+.diag li.info {
+    color: #0366d6;
+}
+
+/* Tooltip styling */
+.cm-tooltip.cm-tooltip-hover {
+    border: 1px solid #ddd;
+    background: black;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    padding: 8px 10px;
+    max-width: 420px;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.tipTitle {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.tipBody {
+    white-space: pre-wrap;
+}
+
+
+
+/* Loading screen */
+
+.centered {
+    margin-right: auto;
+    margin-left: auto;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #f0f0f0;
+    font-size: 24px;
+    font-family: Ubuntu-Light, Helvetica, sans-serif;
+    text-align: center;
+}
+
+.lds-dual-ring {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+}
+
+.lds-dual-ring:after {
+    content: " ";
+    display: block;
+    width: 24px;
+    height: 24px;
+    margin: 0px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    border-color: #fff transparent #fff transparent;
+    animation: lds-dual-ring 1.2s linear infinite;
+}
+
+@keyframes lds-dual-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

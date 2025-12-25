@@ -353,10 +353,12 @@ impl TransitionTable {
                             Some(symbol)
                         }).collect();
                         
-                        transitions_map
+                        if !transitions_map
                             .entry((state, char, stack_symbol))
-                            .or_insert(Vec::new())
-                            .push((next_state, stack))
+                            .or_insert(HashSet::new())
+                            .insert((next_state, stack)) {
+                                logs.emit_warning("duplicate transition", item.1);
+                            }
                     }
                 }
                 TL::Assignment(S(Dest::Function(S(name, _), _), dest_s), _) => {
@@ -403,7 +405,7 @@ impl TransitionTable {
         let initial_state = match initial_state {
             Some(some) => some,
             None => {
-                if let Some(initial) = states.get("z0") {
+                if let Some(initial) = states.get("q0") {
                     logs.emit_warning_locless("initial state not defined, defaulting to 'q0'");
                     *initial
                 } else {
