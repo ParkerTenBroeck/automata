@@ -31,15 +31,14 @@ pub struct Simulator {
     running: Vec<NPDA>,
 }
 
-pub enum SimulatorResult{
+pub enum SimulatorResult {
     Pending,
     Reject,
-    Accept(NPDA)
+    Accept(NPDA),
 }
 
 impl Simulator {
     pub fn begin(input: impl Into<String>, table: TransitionTable) -> Self {
-        
         Self {
             input: input.into(),
             running: vec![NPDA {
@@ -110,9 +109,9 @@ impl Simulator {
             }
         }
         self.running = new;
-        if self.running.is_empty(){
+        if self.running.is_empty() {
             SimulatorResult::Reject
-        }else{
+        } else {
             SimulatorResult::Pending
         }
     }
@@ -153,10 +152,9 @@ impl TransitionTable {
 
         for Spanned(element, span) in ast {
             use Spanned as S;
-            use ast::Dest;
             use ast::TopLevel as TL;
             match element {
-                TL::Assignment(S(Dest::Ident("Q"), _), list) => {
+                TL::Item(S("Q", _), list) => {
                     if !states.is_empty() {
                         logs.emit_error("states already set", *span);
                     }
@@ -183,7 +181,7 @@ impl TransitionTable {
                         logs.emit_error("states cannot be empty", *span);
                     }
                 }
-                TL::Assignment(S(Dest::Ident("E" | SIGMA_UPPER | "sigma"), _), list) => {
+                TL::Item(S("E" | SIGMA_UPPER | "sigma", _), list) => {
                     if !alphabet.is_empty() {
                         logs.emit_error("alphabet already set", *span);
                     }
@@ -207,7 +205,7 @@ impl TransitionTable {
                         logs.emit_error("alphabet cannot be empty", *span);
                     }
                 }
-                TL::Assignment(S(Dest::Ident("F"), _), list) => {
+                TL::Item(S("F", _), list) => {
                     if final_states.is_some() {
                         logs.emit_error("final states already set", *span);
                     }
@@ -219,17 +217,17 @@ impl TransitionTable {
                         let Some(ident) = item.expect_ident(&mut logs) else {
                             continue;
                         };
-                        if let Some(state) = states.get(ident){
+                        if let Some(state) = states.get(ident) {
                             if !map.insert(*state) {
                                 logs.emit_error("final state redefined", item.1);
                             }
-                        } else{
+                        } else {
                             logs.emit_error("final state not defined in set of states", item.1);
                         }
                     }
                     final_states = Some(map);
                 }
-                TL::Assignment(S(Dest::Ident("T" | GAMMA_UPPER | "gamma"), _), list) => {
+                TL::Item(S("T" | GAMMA_UPPER | "gamma", _), list) => {
                     if !stack_symbols.is_empty() {
                         logs.emit_error("stack symbols already set", *span);
                     }
@@ -256,7 +254,7 @@ impl TransitionTable {
                         logs.emit_error("stack symbols cannot be empty", *span);
                     }
                 }
-                TL::Assignment(S(Dest::Ident("I" | "q0"), _), S(src, src_d)) => match src {
+                TL::Item(S("I" | "q0", _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_state.is_some() {
                             logs.emit_error("initial state already set", *span);
@@ -269,7 +267,7 @@ impl TransitionTable {
                     }
                     _ => logs.emit_error("expected ident", *src_d),
                 },
-                TL::Assignment(S(Dest::Ident("S" | "z0"), _), S(src, src_d)) => match src {
+                TL::Item(S("S" | "z0", _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_stack.is_some() {
                             logs.emit_error("initial stack already set", *span);
@@ -285,12 +283,12 @@ impl TransitionTable {
                     }
                     _ => logs.emit_error("expected ident", *src_d),
                 },
-                TL::Assignment(S(Dest::Ident(name), dest_s), _) => {
+                TL::Item(S(name, dest_s), _) => {
                     logs.emit_error(format!("unknown item {name:?}, expected 'Q'|'E'|'{SIGMA_UPPER}'|'sigma'|'F'|'T'|'{GAMMA_UPPER}'|'gamma'|'I'|'q0'|'S'|'z0'"), *dest_s);
                 }
 
-                TL::Assignment(
-                    S(Dest::Function(S("d" | DELTA_LOWER | "delta", _), tuple), _),
+                TL::TransitionFunc(
+                    S((S("d" | DELTA_LOWER | "delta", _), tuple), _),
                     list,
                 ) => {
                     let list = list.set_weak();
@@ -299,7 +297,7 @@ impl TransitionTable {
                     else {
                         continue;
                     };
-                    let Some(state) = states.get(state.0).copied() else{
+                    let Some(state) = states.get(state.0).copied() else {
                         logs.emit_error("transition state not defined as state", state.1);
                         continue;
                     };
@@ -313,18 +311,25 @@ impl TransitionTable {
 
                     let char = match letter.0 {
                         Sym::Epsilon => None,
-                        Sym::Ident(val) => if let Some(char) = val.chars().next() && val.chars().count() == 1 {
-                            if !alphabet.contains(&char){
-                                logs.emit_error("transition letter not defined in alphabet", letter.1);
+                        Sym::Ident(val) => {
+                            if let Some(char) = val.chars().next()
+                                && val.chars().count() == 1
+                            {
+                                if !alphabet.contains(&char) {
+                                    logs.emit_error(
+                                        "transition letter not defined in alphabet",
+                                        letter.1,
+                                    );
+                                }
+                                Some(char)
+                            } else {
+                                logs.emit_error(
+                                    "transition letter can only be single character",
+                                    letter.1,
+                                );
+                                None
                             }
-                            Some(char)
-                        }else{
-                            logs.emit_error(
-                                "transition letter can only be single character",
-                                letter.1,
-                            );
-                            None
-                        },
+                        }
                     };
 
                     for item in list {
@@ -339,29 +344,37 @@ impl TransitionTable {
                             logs.emit_error("transition state not defined as state", next_state.1);
                             continue;
                         };
-                        
-                        let stack: Vec<_> = stack.iter().rev().filter_map(|symbol|{
-                            if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon)) {
-                                return None;
-                            }
-                            let ident = symbol.expect_ident(&mut logs)?;
 
-                            let Some(symbol) = stack_symbols.get(ident).copied() else{
-                                logs.emit_error("transition stack symbol not defined", symbol.1);
-                                return None;
-                            };
-                            Some(symbol)
-                        }).collect();
-                        
+                        let stack: Vec<_> = stack
+                            .iter()
+                            .rev()
+                            .filter_map(|symbol| {
+                                if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon)) {
+                                    return None;
+                                }
+                                let ident = symbol.expect_ident(&mut logs)?;
+
+                                let Some(symbol) = stack_symbols.get(ident).copied() else {
+                                    logs.emit_error(
+                                        "transition stack symbol not defined",
+                                        symbol.1,
+                                    );
+                                    return None;
+                                };
+                                Some(symbol)
+                            })
+                            .collect();
+
                         if !transitions_map
                             .entry((state, char, stack_symbol))
                             .or_insert(HashSet::new())
-                            .insert((next_state, stack)) {
-                                logs.emit_warning("duplicate transition", item.1);
-                            }
+                            .insert((next_state, stack))
+                        {
+                            logs.emit_warning("duplicate transition", item.1);
+                        }
                     }
                 }
-                TL::Assignment(S(Dest::Function(S(name, _), _), dest_s), _) => {
+                TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                     logs.emit_error(
                         format!("unknown function {name:?}, expected 'd'|'delta'|'{DELTA_LOWER}'"),
                         *dest_s,
@@ -429,21 +442,21 @@ impl TransitionTable {
                 a
             },
         ));
-        let final_states = final_states.map(|f|{
-            StateMap(f.iter().fold(vec![false; states.len()], |mut a, k|{
+        let final_states = final_states.map(|f| {
+            StateMap(f.iter().fold(vec![false; states.len()], |mut a, k| {
                 a[k.0 as usize] = true;
                 a
             }))
         });
 
-        let mut transitions: StateSymbolMap<CharEpsilonMap<Vec<To>>> = StateSymbolMap{
+        let mut transitions: StateSymbolMap<CharEpsilonMap<Vec<To>>> = StateSymbolMap {
             map: vec![CharEpsilonMap::default(); stack_symbols.len() * states.len()],
             max_state: states.len() as u16,
         };
-        
-        for ((q, c, s), to) in transitions_map{
+
+        for ((q, c, s), to) in transitions_map {
             let from = &mut transitions[(q, s)];
-            for (n, ss) in to{
+            for (n, ss) in to {
                 from.get_mut_or_insert_default(c).push(To(n, ss));
             }
         }

@@ -7,13 +7,13 @@ pub mod npda;
 pub mod ntm;
 pub mod tm;
 
-pub trait Get<Idx>{
+pub trait Get<Idx> {
     type Output;
     fn get(&self, idx: Idx) -> Option<&Self::Output>;
     fn get_mut(&mut self, idx: Idx) -> Option<&mut Self::Output>;
 }
 
-pub trait GetDefault<Idx>{
+pub trait GetDefault<Idx> {
     type Output: Default;
     fn get_or_insert_default(&mut self, idx: Idx) -> &Self::Output;
     fn get_mut_or_insert_default(&mut self, idx: Idx) -> &mut Self::Output;
@@ -67,7 +67,6 @@ pub struct State(u16);
 #[derive(Clone, Debug, Copy, Hash, PartialEq, Eq)]
 pub struct Symbol(u16);
 
-
 #[derive(Clone, Debug)]
 pub struct StateMap<T>(Vec<T>);
 
@@ -84,18 +83,42 @@ pub struct StateSymbolMap<T> {
     max_state: u16,
 }
 
-
-index!(StateSymbolMap, self, self.map, state.0 as usize + self.max_state as usize * symbol.0 as usize, (state, symbol) = (State, Symbol));
-index!(StateSymbolMap, self, self.map, state.0 as usize + self.max_state as usize * symbol.0 as usize, (symbol, state) = (Symbol, State));
-
+index!(
+    StateSymbolMap,
+    self,
+    self.map,
+    state.0 as usize + self.max_state as usize * symbol.0 as usize,
+    (state, symbol) = (State, Symbol)
+);
+index!(
+    StateSymbolMap,
+    self,
+    self.map,
+    state.0 as usize + self.max_state as usize * symbol.0 as usize,
+    (symbol, state) = (Symbol, State)
+);
 
 #[derive(Clone, Debug, Default)]
 pub struct CharMap<T>(HashMap<char, T>);
 
-index!(CharMap, self, self.0, &char, char = char, self.0.entry(char).or_default());
+index!(
+    CharMap,
+    self,
+    self.0,
+    &char,
+    char = char,
+    self.0.entry(char).or_default()
+);
 
 #[derive(Clone, Debug, Default)]
 pub struct CharEpsilonMap<T>(HashMap<Option<char>, T>);
 
-index!(CharEpsilonMap, self, self.0, &Some(char), char = char, self.0.entry(Some(char)).or_default());
+index!(
+    CharEpsilonMap,
+    self,
+    self.0,
+    &Some(char),
+    char = char,
+    self.0.entry(Some(char)).or_default()
+);
 index!(CharEpsilonMap, self, self.0, &char, char = Option<char>, self.0.entry(char).or_default());

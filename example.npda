@@ -1,7 +1,7 @@
-
+type=NPDA
 Q = {q0, q1} // states
 E = {a, b} // alphabet
-T = {z0, A, B} // stack 
+T = {z0, A, B} // stack
 q0 = q0
 z0 = z0
 

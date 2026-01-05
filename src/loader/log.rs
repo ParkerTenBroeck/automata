@@ -73,15 +73,15 @@ impl<'a> Logs<'a> {
         })
     }
 
-    pub fn entries(&self) -> &[LogEntry]{
+    pub fn entries(&self) -> &[LogEntry] {
         &self.logs
     }
 
-    pub fn into_entries(self) -> impl Iterator<Item = LogEntry>{
+    pub fn into_entries(self) -> impl Iterator<Item = LogEntry> {
         self.logs.into_iter()
     }
 
-    pub fn src(&self) -> &str{
+    pub fn src(&self) -> &str {
         &self.src
     }
 }
@@ -134,15 +134,24 @@ impl<'a> Display for LogEntryDisplay<'a> {
                 .map(|v| v + 1)
                 .unwrap_or(0);
 
-            let end = self
-                .src
-                .get(span.1..)
-                .and_then(|s| s.find('\n'))
-                .map(|v| v + span.1)
-                .unwrap_or(self.src.len());
+            let end = if self.src.get(..span.1).unwrap_or("").ends_with("\n") {
+                span.1
+            } else {
+                self.src
+                    .get(span.1..)
+                    .and_then(|s| s.find('\n'))
+                    .map(|v| v + span.1)
+                    .unwrap_or(self.src.len())
+            };
 
             let mut index = start;
-            for (i, line) in self.src.get(start..end).unwrap_or("").lines().enumerate() {
+            for (i, line) in self
+                .src
+                .get(start..end)
+                .unwrap_or("")
+                .split_inclusive("\n")
+                .enumerate()
+            {
                 write!(f, "{BOLD}{CYAN}{:>padding$}: {RESET}", i + line_start)?;
                 for char in line.chars() {
                     if char == '\t' {
@@ -151,7 +160,9 @@ impl<'a> Display for LogEntryDisplay<'a> {
                         write!(f, "{char}")?
                     }
                 }
-                writeln!(f)?;
+                if !line.ends_with("\n") {
+                    writeln!(f)?;
+                }
                 write!(f, "{BOLD}{CYAN}")?;
                 for _ in 0..padding + 3 {
                     write!(f, " ")?;

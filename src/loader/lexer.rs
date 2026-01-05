@@ -26,13 +26,14 @@ pub enum Token<'a> {
     Comment(&'a str),
 
     Ident(&'a str),
+    LineEnd,
 }
 
 impl<'a> std::fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::LPar => write!(f, "')'"),
-            Token::RPar => write!(f, "'('"),
+            Token::LPar => write!(f, "'('"),
+            Token::RPar => write!(f, "')'"),
             Token::LBrace => write!(f, "'{{'"),
             Token::RBrace => write!(f, "'}}'"),
             Token::LBracket => write!(f, "'['"),
@@ -49,6 +50,7 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::Comment(_) => write!(f, "<comment>"),
             Token::Ident(ident) if f.alternate() => write!(f, "{ident:?}"),
             Token::Ident(_) => write!(f, "ident"),
+            Token::LineEnd => write!(f, "eol"),
         }
     }
 }
@@ -118,7 +120,15 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
         while let Some(c) = self.peek()
             && c.is_whitespace()
         {
-            self.consume();
+             if c == '\n'{
+                self.start = self.position;
+                self.consume();
+                let res = Some(Spanned(Ok(Token::LineEnd), Span(self.start, self.position)));
+                self.start = self.position;
+                return res;
+            }else{
+                self.consume();
+            }
         }
         self.start = self.position;
 
@@ -153,7 +163,8 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
             '/' => match self.consume() {
                 Some('/') => loop {
                     if let Some('\n') | None = self.consume() {
-                        break Ok(Token::Comment(&self.input[self.start + 2..self.position]));
+                        self.backtrack();
+                        break Ok(Token::Comment(&self.input[self.start + 2..=self.position]));
                     }
                 },
                 Some('*') => loop {

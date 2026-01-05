@@ -3,18 +3,21 @@ use std::ops::Range;
 use super::Spanned;
 
 #[derive(Clone, Debug)]
+pub enum ListKind {
+    Brace,
+    Bracket,
+
+    BraceComma,
+    BracketComma,
+}
+
+#[derive(Clone, Debug)]
 pub struct Tuple<'a>(pub Vec<Spanned<Item<'a>>>);
 
 #[derive(Clone, Copy, Debug)]
 pub enum Symbol<'a> {
     Epsilon,
     Ident(&'a str),
-}
-
-#[derive(Clone, Debug)]
-pub enum Dest<'a> {
-    Ident(&'a str),
-    Function(Spanned<&'a str>, Spanned<Tuple<'a>>),
 }
 
 #[derive(Clone, Debug)]
@@ -40,12 +43,19 @@ pub enum Regex<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub struct List<'a>(pub Vec<Spanned<Item<'a>>>);
+pub struct List<'a>(pub Vec<Spanned<Item<'a>>>, pub ListKind);
+
+#[derive(Clone, Debug)]
+pub struct ProductionGroup<'a>(pub Vec<Spanned<Symbol<'a>>>);
 
 #[derive(Clone, Debug)]
 pub enum TopLevel<'a> {
-    Assignment(Spanned<Dest<'a>>, Spanned<Item<'a>>),
-    ProductionRule(Spanned<Symbol<'a>>, Spanned<Symbol<'a>>),
+    Item(Spanned<&'a str>, Spanned<Item<'a>>),
+    TransitionFunc(Spanned<(Spanned<&'a str>, Spanned<Tuple<'a>>)>, Spanned<Item<'a>>),
+    ProductionRule(
+        Spanned<ProductionGroup<'a>>,
+        Spanned<Vec<Spanned<ProductionGroup<'a>>>>,
+    ),
     Table(),
 }
 

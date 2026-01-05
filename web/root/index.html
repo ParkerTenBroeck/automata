@@ -5,6 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Automata</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css">
+
+    
     <link href="editor.css" rel="stylesheet">
 </head>
 
@@ -20,7 +24,10 @@
 
     <div class="app" style="display:none" id="app">
         <section class="canvasPane" id="canvasPane">
-            <canvas id="canvas"></canvas>
+            <div id="graph" class="graph"></div>
+
+            <button id="togglePhysics">Toggle Physics</button>
+            <button id="resetLayout">Reset Layout</button>
         </section>
 
         <div class="hSplit" id="hSplit" title="Drag to resize canvas height"></div>

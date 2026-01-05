@@ -142,6 +142,7 @@ pub fn lex(input: &str) -> Vec<Tok> {
                     | "sigma",
                 ) => Kind::Keyword,
                 Token::Ident(_) => Kind::Ident,
+                Token::LineEnd => Kind::Punc,
             };
 
             let scope_level = match kind {
@@ -183,7 +184,7 @@ pub struct CompileLog {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct CompileResult{
+pub struct CompileResult {
     pub log: Vec<CompileLog>,
     pub log_formatted: String,
 }
@@ -196,9 +197,13 @@ pub fn compile(input: &str) -> CompileResult {
     };
 
     use std::fmt::Write;
-    let log_formatted = log.displayable().fold(String::new(), |mut s, e|{write!(&mut s, "{e}").unwrap(); s});
+    let log_formatted = log.displayable().fold(String::new(), |mut s, e| {
+        write!(&mut s, "{e}").unwrap();
+        s
+    });
 
-    let log = log.into_entries()
+    let log = log
+        .into_entries()
         .map(|e| CompileLog {
             level: match e.level {
                 loader::log::LogLevel::Info => LogLevel::Info,
