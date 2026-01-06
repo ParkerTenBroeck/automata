@@ -284,7 +284,7 @@ impl TransitionTable {
                     _ => logs.emit_error("expected ident", *src_d),
                 },
                 TL::Item(S(name, dest_s), _) => {
-                    logs.emit_error(format!("unknown item {name:?}, expected 'Q'|'E'|'{SIGMA_UPPER}'|'sigma'|'F'|'T'|'{GAMMA_UPPER}'|'gamma'|'I'|'q0'|'S'|'z0'"), *dest_s);
+                    logs.emit_error(format!("unknown item {name:?}, expected 'Q' | 'E' | '{SIGMA_UPPER}' | 'sigma' | 'F' | 'T' | '{GAMMA_UPPER}' | 'gamma' | 'I' | 'q0' | 'S' | 'z0'"), *dest_s);
                 }
 
                 TL::TransitionFunc(
@@ -376,7 +376,7 @@ impl TransitionTable {
                 }
                 TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                     logs.emit_error(
-                        format!("unknown function {name:?}, expected 'd'|'delta'|'{DELTA_LOWER}'"),
+                        format!("unknown function {name:?}, expected 'd' | 'delta' | '{DELTA_LOWER}'"),
                         *dest_s,
                     );
                 }

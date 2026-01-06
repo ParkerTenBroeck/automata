@@ -18,7 +18,7 @@ fn main() {
         }
     };
 
-    let input = "aababdsaab";
+    let input = "aababaaba";
     println!("running on: '{input}'");
     let mut simulator = npda::Simulator::begin(input, table);
     loop {
