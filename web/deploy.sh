@@ -58,7 +58,7 @@ if [[ "$LOCAL_MAIN" != "$REMOTE_MAIN" && "$LOCAL_MAIN" == "$BASE_MAIN" ]]; then
 fi
 
 echo "✅ '$MAIN_BRANCH' is up-to-date (or ahead/diverged). Pulling latest..."
-git pull --ff-only "$REMOTE" gh-pages
+git pull --ff-only "$REMOTE" "$PAGES_BRANCH"
 
 echo "🏗️  Running build: deno task build"
 deno task build
