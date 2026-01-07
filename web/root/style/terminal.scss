@@ -1,0 +1,48 @@
+.terminal {
+    background: #0b0f14;
+    color: #c9d1d9;
+    padding: 1em;
+    margin: 0px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* ANSI text styles */
+.ansi-bold { font-weight: 700; }
+.ansi-dim { opacity: 0.7; }
+
+/* Foreground colors (standard + bright) */
+.ansi-fg-30 { color: #0b0f14; }  /* black */
+.ansi-fg-31 { color: #ff7b72; }  /* red */
+.ansi-fg-32 { color: #7ee787; }  /* green */
+.ansi-fg-33 { color: #f2cc60; }  /* yellow */
+.ansi-fg-34 { color: #79c0ff; }  /* blue */
+.ansi-fg-35 { color: #d2a8ff; }  /* magenta */
+.ansi-fg-36 { color: #a5d6ff; }  /* cyan */
+.ansi-fg-37 { color: #c9d1d9; }  /* white */
+
+.ansi-fg-90 { color: #6e7681; }  /* bright black / gray */
+.ansi-fg-91 { color: #ffa198; }
+.ansi-fg-92 { color: #a6f3a6; }
+.ansi-fg-93 { color: #ffe082; }
+.ansi-fg-94 { color: #a5d6ff; }
+.ansi-fg-95 { color: #e3b8ff; }
+.ansi-fg-96 { color: #c7f0ff; }
+.ansi-fg-97 { color: #ffffff; }
+
+/* Background colors (optional) */
+.ansi-bg-40 { background: #0b0f14; }
+.ansi-bg-41 { background: rgba(255, 123, 114, 0.22); }
+.ansi-bg-42 { background: rgba(126, 231, 135, 0.18); }
+.ansi-bg-43 { background: rgba(242, 204, 96, 0.18); }
+.ansi-bg-44 { background: rgba(121, 192, 255, 0.18); }
+.ansi-bg-45 { background: rgba(210, 168, 255, 0.18); }
+.ansi-bg-46 { background: rgba(165, 214, 255, 0.18); }
+.ansi-bg-47 { background: rgba(201, 209, 217, 0.10); }

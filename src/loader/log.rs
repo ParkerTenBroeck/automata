@@ -1,18 +1,16 @@
-use std::{borrow::Cow, fmt::Display};
+use std::{fmt::Display};
 
 use crate::loader::Span;
 
-pub struct Logs<'a> {
+pub struct Logs {
     logs: Vec<LogEntry>,
-    src: Cow<'a, str>,
     has_error: bool,
 }
 
-impl<'a> Logs<'a> {
-    pub fn new(src: impl Into<Cow<'a, str>>) -> Self {
+impl Logs {
+    pub fn new() -> Self {
         Self {
             logs: Vec::new(),
-            src: src.into(),
             has_error: false,
         }
     }
@@ -66,9 +64,9 @@ impl<'a> Logs<'a> {
         });
     }
 
-    pub fn displayable(&self) -> impl Iterator<Item = LogEntryDisplay<'_>> {
+    pub fn displayable_with<'a>(&'a self, src: &'a str) -> impl Iterator<Item = LogEntryDisplay<'a>> {
         self.logs.iter().map(|entry| LogEntryDisplay {
-            src: &self.src,
+            src,
             entry,
         })
     }
@@ -80,9 +78,11 @@ impl<'a> Logs<'a> {
     pub fn into_entries(self) -> impl Iterator<Item = LogEntry> {
         self.logs.into_iter()
     }
+}
 
-    pub fn src(&self) -> &str {
-        &self.src
+impl Default for Logs {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

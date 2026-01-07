@@ -58,8 +58,6 @@ impl<'a> std::fmt::Display for Token<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct Lexer<'a> {
     input: &'a str,
-
-    start: usize,
     position: usize,
 }
 
@@ -73,7 +71,6 @@ impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
-            start: 0,
             position: 0,
         }
     }
@@ -96,13 +93,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn eof_span(&self) -> Span {
-        Span(self.input.len(), self.input.len())
-    }
-
-    pub fn input(&self) -> &'a str {
-        self.input
-    }
 }
 
 fn begin_ident(c: char) -> bool {
@@ -121,16 +111,15 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
             && c.is_whitespace()
         {
              if c == '\n'{
-                self.start = self.position;
+                let start = self.position;
                 self.consume();
-                let res = Some(Spanned(Ok(Token::LineEnd), Span(self.start, self.position)));
-                self.start = self.position;
+                let res = Some(Spanned(Ok(Token::LineEnd), Span(start, self.position)));
                 return res;
             }else{
                 self.consume();
             }
         }
-        self.start = self.position;
+        let start = self.position;
 
         let res = match self.consume()? {
             '(' => Ok(Token::LPar),
@@ -163,8 +152,7 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
             '/' => match self.consume() {
                 Some('/') => loop {
                     if let Some('\n') | None = self.consume() {
-                        self.backtrack();
-                        break Ok(Token::Comment(&self.input[self.start + 2..=self.position]));
+                        break Ok(Token::Comment(&self.input[start + 2..self.position]));
                     }
                 },
                 Some('*') => loop {
@@ -172,7 +160,7 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                         Some('*') if self.peek() == Some('/') => {
                             self.consume();
                             break Ok(Token::Comment(
-                                &self.input[self.start + 2..self.position - 2],
+                                &self.input[start + 2..self.position - 2],
                             ));
                         }
                         Some(_) => {}
@@ -191,16 +179,15 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                     Some(c) if continue_ident(c) => {}
                     Some(_) => {
                         self.backtrack();
-                        break Ok(Token::Ident(&self.input[self.start..self.position]));
+                        break Ok(Token::Ident(&self.input[start..self.position]));
                     }
-                    None => break Ok(Token::Ident(&self.input[self.start..self.position])),
+                    None => break Ok(Token::Ident(&self.input[start..self.position])),
                 }
             },
 
             c => Err(Error::InvalidChar(c)),
         };
-        let span = Span(self.start, self.position);
-        self.start = self.position;
+        let span = Span(start, self.position);
         Some(Spanned(res, span))
     }
 }

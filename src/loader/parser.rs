@@ -1,283 +1,242 @@
-use crate::loader::log::{LogEntryDisplay, Logs};
-use crate::loader::{EPSILON_LOWER, Span, Spanned};
+use crate::loader::{Context, Span};
+
+use super::lexer::Token as T;
+use crate::loader::Spanned as S;
 
 use super::ast::*;
-use super::lexer::{Lexer, Token};
+use super::lexer::Lexer;
 
-pub struct Parser<'a> {
+pub struct Parser<'a, 'b> {
     lexer: Lexer<'a>,
-    peek: Option<Spanned<Token<'a>>>,
-    logs: Logs<'a>,
+    peek: Option<S<T<'a>>>,
+    ctx: &'b mut Context<'a>,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(lexer: Lexer<'a>) -> Self {
-        Parser {
-            logs: Logs::new(lexer.input()),
-            peek: None,
-            lexer,
-        }
-    }
+impl<'a, 'b> Iterator for Parser<'a, 'b> {
+    type Item = S<TopLevel<'a>>;
 
-    fn eof(&self) -> Span {
-        self.lexer.eof_span()
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_element()
+    }
+}
+
+impl<'a, 'b> Parser<'a, 'b> {
+    pub fn new(ctx: &'b mut Context<'a>) -> Self {
+        Parser {
+            lexer: Lexer::new(ctx.src()),
+            ctx,
+            peek: None,
+        }
     }
 
     fn advance_line(&mut self) {
-        if self.peek_token().is_none(){
-            return;
-        }
-        
-        if self.expect_token(Token::LineEnd).0 {
+        if self.expect_token(T::LineEnd).0 {
             self.peek = None;
         }
     }
 
-    fn next_token(&mut self) -> Option<Spanned<Token<'a>>> {
+    fn next_token_optional(&mut self) -> Option<S<T<'a>>> {
         match self.peek {
-            Some(Spanned(Token::LineEnd, _)) => return self.peek,
+            Some(S(T::LineEnd, _)) => return self.peek,
             Some(_) => return self.peek.take(),
             _ => {}
         }
         loop {
             match self.lexer.next() {
-                Some(Spanned(Ok(Token::Comment(_)), _)) => {}
-                Some(Spanned(Ok(Token::LineEnd), span)) => {
-                    self.peek = Some(Spanned(Token::LineEnd, span));
+                Some(S(Ok(T::Comment(_)), _)) => {}
+                Some(S(Ok(T::LineEnd), span)) => {
+                    self.peek = Some(S(T::LineEnd, span));
                     return self.peek;
                 }
-                Some(Spanned(Ok(ok), r)) => return Some(Spanned(ok, r)),
-                Some(Spanned(Err(err), span)) => {
-                    self.logs.emit_error(format!("lexer: {err:?}"), span)
-                }
+                Some(S(Ok(ok), r)) => return Some(S(ok, r)),
+                Some(S(Err(err), span)) => self.ctx.emit_error(format!("lexer: {err:?}"), span),
                 None => return None,
             }
         }
     }
 
-    fn peek_token(&mut self) -> Option<Spanned<Token<'a>>> {
+    fn peek_token_optional(&mut self) -> Option<S<T<'a>>> {
         if self.peek.is_none() {
-            self.peek = self.next_token();
+            self.peek = self.next_token_optional();
         }
         self.peek
     }
 
-    fn expect_token(&mut self, expected: Token<'a>) -> (bool, Span) {
-        if let Some(Spanned(token, span)) = self.peek_token() {
-            if token != expected {
-                self.logs.emit_error(
-                    format!("unexpected {:#}, expected {:}", token, expected),
-                    span,
-                );
-                (false, span)
-            } else {
+    fn next_token(&mut self) -> S<T<'a>> {
+        self.next_token_optional()
+            .unwrap_or(S(T::LineEnd, self.ctx.eof()))
+    }
+
+    fn peek_token(&mut self) -> S<T<'a>> {
+        self.peek_token_optional()
+            .unwrap_or(S(T::LineEnd, self.ctx.eof()))
+    }
+
+    fn expect_token(&mut self, expected: T<'a>) -> (bool, Span) {
+        match self.peek_token() {
+            S(token, span) if token == expected => {
                 self.next_token();
                 (true, span)
             }
-        } else {
-            self.logs.emit_error(
-                format!("unexpected eof expected {:#}", expected),
-                self.eof(),
-            );
-            (false, self.eof())
+            S(token, span) => {
+                self.ctx.emit_error(
+                    format!("unexpected {:#} expected {:}", token, expected),
+                    span,
+                );
+                (false, span)
+            }
         }
     }
 
-    fn parse_symbol(&mut self) -> Spanned<Symbol<'a>> {
-        match self.next_token() {
-            Some(Spanned(Token::Tilde, r)) => Spanned(Symbol::Epsilon, r),
-            Some(Spanned(Token::Ident("epsilon"), r)) => Spanned(Symbol::Epsilon, r),
-            Some(Spanned(Token::Ident(super::EPSILON_LOWER), r)) => Spanned(Symbol::Epsilon, r),
-            Some(Spanned(Token::Ident(ident), r)) => Spanned(Symbol::Ident(ident), r),
-            Some(Spanned(got, span)) => {
-                self.logs.emit_error(
+    fn parse_as_symbol(&mut self, tok: S<T<'a>>) -> S<Symbol<'a>> {
+        match tok {
+            S(T::Tilde, r) => S(Symbol::Epsilon, r),
+            S(T::Ident("epsilon"), r) => S(Symbol::Epsilon, r),
+            S(T::Ident(super::EPSILON_LOWER), r) => S(Symbol::Epsilon, r),
+            S(T::Ident(ident), r) => S(Symbol::Ident(ident), r),
+            S(got, span) => {
+                self.ctx.emit_error(
                     format!(
-                        "unexpected {:#}, expected {:} | {:} (symbol)",
+                        "unexpected {:#} expected symbol ( {:} | {:} )",
                         got,
-                        Token::Tilde,
-                        Token::Ident("")
+                        T::Tilde,
+                        T::Ident("")
                     ),
                     span,
                 );
-                Spanned(Symbol::Ident("<INVALID>"), span)
-            }
-            None => {
-                self.logs.emit_error(
-                    format!(
-                        "unexpected eof expected {:} | {:} (symbol)",
-                        Token::Tilde,
-                        Token::Ident("")
-                    ),
-                    self.eof(),
-                );
-                Spanned(Symbol::Ident("<INVALID>"), self.eof())
+                S(Symbol::Ident("<INVALID>"), span)
             }
         }
     }
 
-    fn parse_tupple(&mut self) -> Spanned<Tuple<'a>> {
+    fn parse_symbol(&mut self) -> S<Symbol<'a>> {
+        let next = self.next_token();
+        self.parse_as_symbol(next)
+    }
+
+    fn parse_tupple(&mut self) -> S<Tuple<'a>> {
         let mut items = Vec::new();
-        let (matched, start) = self.expect_token(Token::LPar);
+        let (matched, start) = self.expect_token(T::LPar);
         if !matched {
-            return Spanned(Tuple(Vec::new()), start);
+            return S(Tuple(Vec::new()), start);
         }
 
-        while !matches!(self.peek_token(), Some(Spanned(Token::RPar, _))) {
+        while !matches!(self.peek_token().0, T::RPar) {
             items.push(self.parse_item());
-            if matches!(self.peek_token(), Some(Spanned(Token::Comma, _))) {
+            if matches!(self.peek_token().0, T::Comma) {
                 self.next_token();
             }
-            match self.peek_token() {
-                None => {
-                    self.logs.emit_error(
-                        format!("unexpected eof expected {:}", Token::RPar),
-                        self.eof(),
-                    );
-                    return Spanned(Tuple(items), start.join(self.eof()));
-                }
-                Some(Spanned(Token::LineEnd, span)) => {
-                    self.logs
-                        .emit_error(format!("unexpected eol expected {:}", Token::RPar), span);
-                    return Spanned(Tuple(items), start.join(span));
-                }
-                _ => {}
+            if let S(T::LineEnd, span) = self.peek_token() {
+                self.ctx
+                    .emit_error(format!("unexpected eol expected {:}", T::RPar), span);
+                return S(Tuple(items), start.join(span));
             }
         }
 
-        let (_, end) = self.expect_token(Token::RPar);
+        let (_, end) = self.expect_token(T::RPar);
 
-        Spanned(Tuple(items), start.join(end))
+        S(Tuple(items), start.join(end))
     }
 
-    fn parse_item(&mut self) -> Spanned<Item<'a>> {
-        match self.peek_token() {
-            Some(Spanned(Token::Ident(_) | Token::Tilde, _)) => {
-                self.parse_symbol().map(Item::Symbol)
-            }
-            Some(Spanned(Token::LPar, _)) => self.parse_tupple().map(Item::Tuple),
-            Some(Spanned(Token::LBrace | Token::LBracket, _)) => self.parse_list().map(Item::List),
-            Some(Spanned(got, span)) => {
-                self.next_token();
-                self.logs.emit_error(
+    fn parse_item(&mut self) -> S<Item<'a>> {
+        match self.peek_token().0 {
+            T::Ident(_) | T::Tilde => self.parse_symbol().map(Item::Symbol),
+            T::LPar => self.parse_tupple().map(Item::Tuple),
+            T::LBrace | T::LBracket => self.parse_list().map(Item::List),
+            _ => {
+                let S(got, span) = self.next_token();
+                self.ctx.emit_error(
                     format!(
-                        "unexpected {:#}, expected {:} | {:} | {:} | {:} | {:} (item)",
+                        "unexpected {:#} expected item ( {:} | {:} | {:} | {:} | {:} )",
                         got,
-                        Token::Tilde,
-                        Token::Ident(""),
-                        Token::LPar,
-                        Token::LBrace,
-                        Token::LBracket,
+                        T::Tilde,
+                        T::Ident(""),
+                        T::LPar,
+                        T::LBrace,
+                        T::LBracket,
                     ),
                     span,
                 );
-                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), span)
-            }
-            None => {
-                self.logs.emit_error(
-                    format!(
-                        "unexpected eof expected {:} | {:} | {:} | {:} | {:} (item)",
-                        Token::Tilde,
-                        Token::Ident(""),
-                        Token::LPar,
-                        Token::LBrace,
-                        Token::LBracket,
-                    ),
-                    self.eof(),
-                );
-                Spanned(Item::Symbol(Symbol::Ident("<INVALID>")), self.eof())
+                S(Item::Symbol(Symbol::Ident("<INVALID>")), span)
             }
         }
     }
 
-    fn parse_list(&mut self) -> Spanned<List<'a>> {
+    fn parse_list(&mut self) -> S<List<'a>> {
         let mut list = Vec::new();
 
         let (start, match_end) = match self.next_token() {
-            Some(Spanned(Token::LBrace, r)) => (r, Token::RBrace),
-            Some(Spanned(Token::LBracket, r)) => (r, Token::RBracket),
-            Some(Spanned(got, span)) => {
-                self.logs.emit_error(
+            S(T::LBrace, span) => (span, T::RBrace),
+            S(T::LBracket, span) => (span, T::RBracket),
+            S(got, span) => {
+                self.ctx.emit_error(
                     format!(
-                        "unexpected {:#}, expected {:} | {:}",
+                        "unexpected {:#} expected list start ( {:} | {:} )",
                         got,
-                        Token::RBrace,
-                        Token::RBracket
+                        T::RBrace,
+                        T::RBracket
                     ),
                     span,
                 );
-                return Spanned(List(Vec::new(), ListKind::BracketComma), span);
-            }
-            None => {
-                self.logs.emit_error(
-                    format!(
-                        "unexpected eof expected {:} | {:}",
-                        Token::RBrace,
-                        Token::RBracket
-                    ),
-                    self.eof(),
-                );
-                return Spanned(List(Vec::new(), ListKind::BracketComma), self.eof());
+                return S(List(Vec::new(), ListKind::BracketComma), span);
             }
         };
 
         let mut comma = false;
-        while self.peek_token().map(|t| t.0) != Some(match_end) {
+        while self.peek_token().0 != match_end {
             list.push(self.parse_item());
-            if matches!(self.peek_token(), Some(Spanned(Token::Comma, _))) {
+
+            if list.len() != 1
+                && self.peek_token().0 != match_end
+                && !matches!(self.peek_token().0, T::LineEnd)
+                && matches!(self.peek_token().0, T::Comma) != comma
+            {
+                let span = self.peek_token().1;
+                self.ctx.emit_warning(
+                    "inconsistent comma delimiting. use commas to delimit all or no items",
+                    span,
+                );
+            }
+            if matches!(self.peek_token().0, T::Comma) {
                 comma = true;
                 self.next_token();
             }
-            match self.peek_token() {
-                None => {
-                    self.logs.emit_error(
-                        format!("unexpected eof expected {:}", match_end),
-                        self.eof(),
-                    );
-                    return Spanned(List(list, ListKind::BraceComma), start.join(self.eof()));
-                }
-                Some(Spanned(Token::LineEnd, span)) => {
-                    self.logs
-                        .emit_error(format!("unexpected eol expected {:}", match_end), span);
-                    return Spanned(List(list, ListKind::BraceComma), start.join(span));
-                }
-                _ => {}
+            if let S(T::LineEnd, span) = self.peek_token() {
+                self.ctx.emit_error(
+                    format!("unexpected eol expected list close ( {:} )", match_end),
+                    span,
+                );
+                return S(List(list, ListKind::BraceComma), start.join(span));
             }
         }
         let (_, end) = self.expect_token(match_end);
         let kind = match (comma, match_end) {
-            (true, Token::RBrace) => ListKind::BraceComma,
-            (false, Token::RBrace) => ListKind::Brace,
-            (true, Token::RBracket) => ListKind::BracketComma,
-            (false, Token::RBracket) => ListKind::Bracket,
+            (true, T::RBrace) => ListKind::BraceComma,
+            (false, T::RBrace) => ListKind::Brace,
+            (true, T::RBracket) => ListKind::BracketComma,
+            (false, T::RBracket) => ListKind::Bracket,
             _ => unreachable!(),
         };
-        Spanned(List(list, kind), start.join(end))
+        S(List(list, kind), start.join(end))
     }
 
-    fn parse_regex(&mut self) -> Spanned<Regex<'a>> {
+    fn parse_regex(&mut self) -> S<Regex<'a>> {
         todo!()
     }
 
-    fn parse_production_rule(
-        &mut self,
-        sym: Symbol<'a>,
-        start: Span,
-    ) -> Option<Spanned<TopLevel<'a>>> {
-        let mut lhs_group = ProductionGroup(vec![Spanned(sym, start)]);
+    fn parse_production_rule(&mut self, S(sym, start): S<Symbol<'a>>) -> Option<S<TopLevel<'a>>> {
+        let mut lhs_group = ProductionGroup(vec![S(sym, start)]);
         let mut lhs_group_end = start;
-        while !matches!(
-            self.peek_token(),
-            None | Some(Spanned(Token::LSmallArrow | Token::LineEnd, _))
-        ) {
+        while !matches!(self.peek_token().0, T::LSmallArrow | T::LineEnd) {
             let sym = self.parse_symbol();
             lhs_group_end = sym.1;
             lhs_group.0.push(sym);
         }
-        if !self.expect_token(Token::LSmallArrow).0 {
-            return Some(Spanned(
+        if !self.expect_token(T::LSmallArrow).0 {
+            return Some(S(
                 TopLevel::ProductionRule(
-                    Spanned(lhs_group, start.join(lhs_group_end)),
-                    Spanned(vec![], lhs_group_end),
+                    S(lhs_group, start.join(lhs_group_end)),
+                    S(vec![], lhs_group_end),
                 ),
                 start.join(lhs_group_end),
             ));
@@ -287,25 +246,21 @@ impl<'a> Parser<'a> {
 
         loop {
             let mut group = ProductionGroup(vec![]);
-            while !matches!(
-                self.peek_token(),
-                None | Some(Spanned(Token::LineEnd | Token::Or, _))
-            ) {
+            while !matches!(self.peek_token().0, T::LineEnd | T::Or) {
                 group.0.push(self.parse_symbol());
             }
 
             if group.0.is_empty() {
-                let eof = self.eof();
-                let span = self.peek_token().map(|t| t.1).unwrap_or(eof);
-                self.logs
+                let span = self.peek_token().1;
+                self.ctx
                     .emit_error("cannot have empty production group", span);
             }
 
             let group_start = group.0.first().map(|g| g.1).unwrap_or(start);
             let group_end = group.0.last().map(|g| g.1).unwrap_or(start);
-            groups.push(Spanned(group, group_start.join(group_end)));
+            groups.push(S(group, group_start.join(group_end)));
 
-            if matches!(self.peek_token(), Some(Spanned(Token::Or, _))) {
+            if matches!(self.peek_token().0, T::Or) {
                 self.next_token();
             } else {
                 break;
@@ -313,7 +268,7 @@ impl<'a> Parser<'a> {
         }
 
         if groups.is_empty() {
-            self.logs.emit_error(
+            self.ctx.emit_error(
                 "cannot have empty production rule",
                 start.join(lhs_group_end),
             );
@@ -322,10 +277,10 @@ impl<'a> Parser<'a> {
         let rules_start = groups.first().map(|f| f.1).unwrap_or(start);
         let rules_end = groups.last().map(|f| f.1).unwrap_or(start);
 
-        Some(Spanned(
+        Some(S(
             TopLevel::ProductionRule(
-                Spanned(lhs_group, start.join(lhs_group_end)),
-                Spanned(groups, rules_start.join(rules_end)),
+                S(lhs_group, start.join(lhs_group_end)),
+                S(groups, rules_start.join(rules_end)),
             ),
             start.join(rules_end),
         ))
@@ -335,106 +290,73 @@ impl<'a> Parser<'a> {
         &mut self,
         ident: &'a str,
         start: Span,
-    ) -> Option<Spanned<TopLevel<'a>>> {
+    ) -> Option<S<TopLevel<'a>>> {
         let tuple = self.parse_tupple();
         let span = start.join(tuple.1);
-        let dest = Spanned((Spanned(ident, start), tuple), span);
-        if !self.expect_token(Token::Eq).0 {
+        let dest = S((S(ident, start), tuple), span);
+        if !self.expect_token(T::Eq).0 {
             return None;
         }
         let item = self.parse_item();
         let span = start.join(item.1);
-        Some(Spanned(TopLevel::TransitionFunc(dest, item), span))
+        Some(S(TopLevel::TransitionFunc(dest, item), span))
     }
 
-    pub fn next_element(&mut self) -> Option<Spanned<TopLevel<'a>>> {
+    pub fn next_element(&mut self) -> Option<S<TopLevel<'a>>> {
         let result = loop {
-            let next = self.next_token()?;
+            let next = self.next_token_optional()?;
             match (next, self.peek_token()) {
-                (Spanned(Token::LineEnd, _), _) => self.advance_line(),
-                (Spanned(Token::Ident(ident), start), Some(Spanned(Token::LPar, _))) => {
+                // empty
+                (S(T::LineEnd, _), _) => self.advance_line(),
+                // transition function
+                (S(T::Ident(ident), start), S(T::LPar, _)) => {
                     if let Some(tf) = self.parse_transition_function(ident, start) {
                         break Some(tf);
                     }
                 }
-                (
-                    Spanned(
-                        Token::Ident(EPSILON_LOWER) | Token::Ident("epsilon") | Token::Tilde,
-                        start,
-                    ),
-                    Some(Spanned(Token::LSmallArrow | Token::Ident(_) | Token::Tilde, _)),
-                ) => {
-                    if let Some(pr) = self.parse_production_rule(Symbol::Epsilon, start) {
-                        break Some(pr);
-                    }
-                }
-                (
-                    Spanned(Token::Ident(ident), start),
-                    Some(Spanned(Token::LSmallArrow | Token::Ident(_) | Token::Tilde, _)),
-                ) => {
-                    if let Some(pr) = self.parse_production_rule(Symbol::Ident(ident), start) {
-                        break Some(pr);
-                    }
-                }
-                (Spanned(Token::Ident(ident), start), Some(Spanned(Token::Eq, _))) => {
-                    let name = Spanned(ident, start);
-                    if !self.expect_token(Token::Eq).0 {
+                // item
+                (S(T::Ident(ident), start), S(T::Eq, _)) => {
+                    let name = S(ident, start);
+                    if !self.expect_token(T::Eq).0 {
                         continue;
                     }
                     let item = self.parse_item();
                     let span = start.join(item.1);
-                    break Some(Spanned(TopLevel::Item(name, item), span));
+                    break Some(S(TopLevel::Item(name, item), span));
                 }
-                (Spanned(Token::Ident(_), _), after) => {
-                    match after {
-                        Some(Spanned(tok, span)) => {
-                            self.logs.emit_error(
-                                format!(
-                                    "unexpected {:#}, expected {:} | {:}",
-                                    tok,
-                                    Token::Eq,
-                                    Token::LSmallArrow
-                                ),
-                                span,
-                            );
-                        }
-                        None => {
-                            self.logs.emit_error(
-                                format!(
-                                    "unexpected eof, expected {:} | {:}",
-                                    Token::Eq,
-                                    Token::LSmallArrow
-                                ),
-                                self.eof(),
-                            );
-                        }
+                // production rule
+                (
+                    sym @ S(T::Ident(_) | T::Tilde, _),
+                    S(T::LSmallArrow | T::Ident(_) | T::Tilde, _),
+                ) => {
+                    let sym = self.parse_as_symbol(sym);
+                    if let Some(pr) = self.parse_production_rule(sym) {
+                        break Some(pr);
                     }
-                    while !matches!(self.next_token(), None | Some(Spanned(Token::LineEnd, _))) {}
+                }
+
+                (S(T::Ident(_), _), S(tok, span)) => {
+                    self.ctx.emit_error(
+                        format!(
+                            "unexpected {:#} expected {:} | {:}",
+                            tok,
+                            T::Eq,
+                            T::LSmallArrow
+                        ),
+                        span,
+                    );
+                    while !matches!(self.next_token().0, T::LineEnd) {}
                 }
                 _ => {
-                    self.logs.emit_error(
-                        format!("unexpected {:#}, expected {:}", next.0, Token::Ident("")),
+                    self.ctx.emit_error(
+                        format!("unexpected {:#} expected {:}", next.0, T::Ident("")),
                         next.1,
                     );
-                    while !matches!(self.next_token(), None | Some(Spanned(Token::LineEnd, _))) {}
+                    while !matches!(self.next_token().0, T::LineEnd) {}
                 }
             }
         };
         self.advance_line();
         result
-    }
-
-    pub fn parse_elements(mut self) -> (Vec<Spanned<TopLevel<'a>>>, Logs<'a>) {
-        let mut result = Vec::new();
-
-        while let Some(next) = self.next_element() {
-            result.push(next)
-        }
-
-        (result, self.logs)
-    }
-
-    pub fn logs(&self) -> impl Iterator<Item = LogEntryDisplay<'_>> {
-        self.logs.displayable()
     }
 }

@@ -1,17 +1,26 @@
-import { EditorView, keymap, hoverTooltip, Decoration, ViewPlugin } from "https://esm.sh/@codemirror/view";
-import { EditorState, StateField } from "https://esm.sh/@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "https://esm.sh/@codemirror/commands";
-import { lineNumbers, highlightActiveLineGutter } from "https://esm.sh/@codemirror/view";
-import { bracketMatching, indentOnInput } from "https://esm.sh/@codemirror/language";
-import { closeBrackets } from "https://esm.sh/@codemirror/autocomplete";
-import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark";
+// deno-lint-ignore-file
 
-import wasm from "./wasm.js"
+import {
+  EditorView,
+  keymap,
+  hoverTooltip,
+  Decoration,
+  ViewPlugin,
+  lineNumbers,
+  highlightActiveLineGutter,
+} from "npm:@codemirror/view";
 
-import * as vis from "./js/vis-network.js"
+import { EditorState, StateField, Text } from "npm:@codemirror/state";
+import { defaultKeymap, history, historyKeymap } from "npm:@codemirror/commands";
+import { bracketMatching, indentOnInput } from "npm:@codemirror/language";
+import { closeBrackets } from "npm:@codemirror/autocomplete";
+import { oneDark } from "npm:@codemirror/theme-one-dark";
 
 
-function tokenize(text) {
+import wasm from "./wasm.ts"
+
+
+function tokenize(text: string) {
   try {
     return wasm.lex(text);
   } catch (e) {
@@ -20,16 +29,17 @@ function tokenize(text) {
   }
 }
 
-function compile(text) {
+function compile(text: string): wasm.CompileResult {
   try {
     return wasm.compile(text);
   } catch (e) {
-    console.log(e)
-    return []
+    console.log(e);
+    // @ts-expect-error wasm defines extra cleanup 
+    return {log: [], log_formatted: ""};
   }
 }
 
-const tokenClass = (t) =>
+const tokenClass = (t: string) =>
 ({
   comment: "tok-comment",
   keyword: "tok-keyword",
@@ -47,20 +57,20 @@ const tokenClass = (t) =>
 }[t] || "tok-ident");
 
 
-function severityClass(sev) {
+function severityClass(sev: string) {
   const s = (sev || "error").toLowerCase();
   if (s === "warning") return "cm-diag-warning";
   if (s === "info") return "cm-diag-info";
   return "cm-diag-error";
 }
-function sevRank(sev) {
+function sevRank(sev: string) {
   if (sev === "error") return 3;
   if (sev === "warning") return 2;
   return 1;
 }
 
 
-function buildAnalysis(text, doc) {
+function buildAnalysis(text: string, doc: Text) {
   const tokens = tokenize(text);
   const { log, log_formatted } = compile(text);
 
@@ -71,7 +81,7 @@ function buildAnalysis(text, doc) {
   for (const tok of tokens) {
     const start = Math.max(0, Math.min(docLen, tok.start));
     const end = Math.max(start, Math.min(docLen, tok.end));
-    var tc = tokenClass(tok.kind);
+    let tc = tokenClass(tok.kind);
     if (tc === "rb-") {
       tc += tok.scope_level.toString();
     }
@@ -114,7 +124,7 @@ const analysisField = StateField.define({
 // ===================== Hover tooltip (uses cached diags) =====================
 const diagHover = hoverTooltip((view, pos) => {
   const { log } = view.state.field(analysisField);
-  const hits = log.filter((d) => pos >= d.start && pos <= d.end);
+  const hits = log.filter((d) => d.start !== undefined && d.end !== undefined && pos >= d.start && pos <= d.end);
   if (hits.length === 0) return null;
 
   const top = hits.reduce((a, b) => (sevRank(b.level) > sevRank(a.level) ? b : a), hits[0]);
@@ -148,27 +158,28 @@ const diagHover = hoverTooltip((view, pos) => {
 });
 
 
-function escapeHtml(s) {
-  return String(s)
+function escapeHtml(s: string) {
+  return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
 
 
-function ansiToHtml(input) {
+function ansiToHtml(input: string) {
+  // deno-lint-ignore no-control-regex
   const ESC_RE = /\x1b\[([0-9;]*)m/g;
 
   let out = "";
   let lastIndex = 0;
 
   // current style state
-  let fg = null; // e.g. 31, 92
-  let bg = null; // e.g. 41
+  let fg: number|null = null; // e.g. 31, 92
+  let bg: number|null = null; // e.g. 41
   let bold = false;
   let dim = false;
 
-  function openSpanIfNeeded(text) {
+  function openSpanIfNeeded(text: string) {
     if (text.length === 0) return "";
     const classes = [];
     if (bold) classes.push("ansi-bold");
@@ -179,8 +190,8 @@ function ansiToHtml(input) {
     return `<span class="${classes.join(" ")}">${escapeHtml(text)}</span>`;
   }
 
-  function applyCodes(codes) {
-    if (codes.length === 0) codes = [0];
+  function applyCodes(codes: string[]) {
+    if (codes.length === 0) codes = ["0"];
     for (const c of codes) {
       const code = Number(c);
       if (Number.isNaN(code)) continue;
@@ -220,6 +231,7 @@ function ansiToHtml(input) {
   return out;
 }
 
+  // @ts-expect-error bad library
 function formatTerminal(view) {
   const term = document.getElementById("terminal");
   if (!term) return;
@@ -234,10 +246,14 @@ function formatTerminal(view) {
 
 const terminalPlugin = ViewPlugin.fromClass(
   class {
+
+    // @ts-expect-error bad library
     constructor(view) {
+    // @ts-expect-error bad library
       this.view = view;
       formatTerminal(view);
     }
+    // @ts-expect-error bad library
     update(update) {
       if (update.docChanged) formatTerminal(update.view);
     }
@@ -288,15 +304,15 @@ const state = EditorState.create({
   ],
 });
 
-window.editor = new EditorView({
+const editor = new EditorView({
   state,
-  parent: document.getElementById("editor"),
+  parent: document.getElementById("editor")!,
 });
 
 
 function setDefaultLayoutWeights() {
-  const vh = window.innerHeight;
-  const vw = window.innerWidth;
+  const vh = globalThis.window.innerHeight;
+  const vw = globalThis.window.innerWidth;
 
   // Canvas: 30% of screen height
   const canvasH = Math.round(vh * 0.60);
@@ -304,7 +320,7 @@ function setDefaultLayoutWeights() {
   // Terminal: 35% of width
   const termW = Math.round(vw * 0.30);
 
-  const app = document.getElementById("app");
+  const app = document.getElementById("app")!;
   app.style.setProperty("--canvasH", `${canvasH}px`);
   app.style.setProperty("--termW", `${termW}px`);
 }
@@ -313,9 +329,9 @@ setDefaultLayoutWeights();
 
 
 (function enableLayoutSplitters() {
-  const app = document.getElementById("app");
-  const hSplit = document.getElementById("hSplit");
-  const vSplit = document.getElementById("vSplit");
+  const app = document.getElementById("app")!;
+  const hSplit = document.getElementById("hSplit")!;
+  const vSplit = document.getElementById("vSplit")!;
   // const canvas = document.getElementById("canvas");
   const canvasPane = document.getElementById("canvasPane");
 
@@ -334,7 +350,7 @@ setDefaultLayoutWeights();
     e.preventDefault();
   });
 
-  window.addEventListener("mousemove", (e) => {
+  globalThis.window.addEventListener("mousemove", (e) => {
     const rect = app.getBoundingClientRect();
 
     if (draggingH) {
@@ -347,7 +363,7 @@ setDefaultLayoutWeights();
     }
 
     if (draggingV) {
-      const bottomPane = document.getElementById("bottomPane");
+      const bottomPane = document.getElementById("bottomPane")!;
       const r = bottomPane.getBoundingClientRect();
       const x = e.clientX - r.left;
       const minTerm = 220;
@@ -357,256 +373,9 @@ setDefaultLayoutWeights();
     }
   });
 
-  window.addEventListener("mouseup", () => {
+  globalThis.window.addEventListener("mouseup", () => {
     draggingH = false;
     draggingV = false;
     document.body.style.cursor = "";
   });
 })();
-
-let network = null;
-const nodes = new vis.DataSet();
-const edges = new vis.DataSet();
-
-
-const automaton = {
-  states: ["q0", "q1"],
-  initialState: "q0",
-  acceptStates: ["q1"],
-
-  transitions: [
-    {
-      from: "q0",
-      to: "q0",
-      label: "ε, z0 → A z0\n"
-    },
-    {
-      from: "q0",
-      to: "q0",
-      label: "ε, z0 → B z0"
-    },
-    {
-      from: "q0",
-      to: "q1",
-      label: "ε, z0 → z0"
-    },
-    {
-      from: "q1",
-      to: "q1",
-      label: "a, A → ε"
-    },
-    {
-      from: "q1",
-      to: "q1",
-      label: "b, B → ε"
-    }
-  ]
-};
-
-/**@param {{ctx: CanvasRenderingContext2D}} */
-function renderNode({
-  ctx,
-  id,
-  x,
-  y,
-  state: { selected, hover },
-  style,
-  label,
-}) {
-  return {
-    drawNode() {
-      ctx.save();
-      var r = style.size;
-
-
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = "red";
-      ctx.fill();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "blue";
-      ctx.stroke();
-
-      ctx.fillStyle = "black";
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x, y, r);
-
-
-      ctx.textAlign = 'center';
-      ctx.strokeStyle = 'white';
-      ctx.fillStyle = "black";
-      let cy = y - (r + 10);
-      for (const part of "meow[]\nbeeep".split("\n").reverse()) {
-        const metrics = ctx.measureText(part);
-        cy -= metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-        ctx.strokeText(part, x, cy);
-        ctx.fillText(part, x, cy);
-      }
-
-
-      ctx.restore();
-    },
-    nodeDimensions: { width: 20, height: 20 },
-  };
-}
-
-
-// Populate nodes
-for (const state of automaton.states) {
-  nodes.add({
-    id: state,
-    label: state,
-  });
-}
-
-// Populate edges
-automaton.transitions.forEach((t, i) => {
-  edges.add({
-    id: `e${i}`,
-    from: t.from,
-    to: t.to,
-    label: t.label
-  });
-});
-
-// updateGraphFromText();
-ensureGraph();
-function updateGraphFromText() {
-  ensureGraph();
-
-  const trans = []
-
-  // Collect state ids
-  const stateSet = new Set();
-  for (const tr of trans) {
-    stateSet.add(tr.from);
-    stateSet.add(tr.to);
-  }
-
-  // Update nodes (add missing, remove stale)
-  const existingNodeIds = new Set(nodes.getIds());
-  const desiredNodeIds = new Set([...stateSet]);
-
-  // remove stale
-  for (const id of existingNodeIds) {
-    if (!desiredNodeIds.has(id)) nodes.remove(id);
-  }
-  // add/update desired
-  for (const id of desiredNodeIds) {
-    const pos = pinnedPositions.get(id);
-    if (!existingNodeIds.has(id)) {
-      nodes.add({
-        id,
-        label: id,
-        ...(pos ? { x: pos.x, y: pos.y, fixed: true } : {})
-      });
-    } else if (pos) {
-      nodes.update({ id, x: pos.x, y: pos.y, fixed: true });
-    }
-  }
-
-  // Update edges (stable IDs so edits don't flicker)
-  const desiredEdgeIds = new Set();
-  const nextEdges = [];
-
-  for (let i = 0; i < trans.length; i++) {
-    const tr = trans[i];
-    const id = `${tr.from}::${tr.to}::${tr.label}::${i}`;
-    desiredEdgeIds.add(id);
-    nextEdges.push({ id, from: tr.from, to: tr.to, label: tr.label });
-  }
-
-  const existingEdgeIds = new Set(edges.getIds());
-  for (const id of existingEdgeIds) {
-    if (!desiredEdgeIds.has(id)) edges.remove(id);
-  }
-  // add/update in batch
-  for (const e of nextEdges) {
-    if (!existingEdgeIds.has(e.id)) edges.add(e);
-    else edges.update(e);
-  }
-
-  // If positions exist for all nodes, we can disable physics to “respect” manual layout
-  // Otherwise leave physics on to auto-layout new nodes.
-  const allPinned = [...desiredNodeIds].every((id) => pinnedPositions.has(id));
-  network.setOptions({ physics: { enabled: !allPinned } });
-
-  // Redraw nicely after updates
-  network.fit({ animation: { duration: 200, easingFunction: "easeInOutQuad" } });
-}
-
-// ---------- 4) Hook graph updates into your existing single-pass analysis ----------
-const graphPlugin = ViewPlugin.fromClass(class {
-  constructor(view) {
-    updateGraphFromText(view.state.doc.toString());
-  }
-  update(update) {
-    if (update.docChanged) {
-      updateGraphFromText(update.state.doc.toString());
-    }
-  }
-});
-
-function chosen_node(values, id, selected, hovering) {
-  
-  console.log(values, id, selected, hovering)
-}
-
-function ensureGraph() {
-  if (network) return;
-
-  const container = document.getElementById("graph");
-  network = new vis.Network(
-    container,
-    { nodes, edges },
-    {
-      layout: { improvedLayout: true },
-      physics: {
-        enabled: true,
-        solver: "barnesHut",
-        barnesHut: { gravitationalConstant: -8000, springLength: 120, springConstant: 0.04 },
-        stabilization: { iterations: 200 }
-      },
-      interaction: {
-        dragNodes: true,
-        hover: true,
-        multiselect: true
-      },
-      nodes: {
-        shape: 'dot',
-        size: 14,
-        font: { color: "#c9d1d9" },
-        color: {
-          background: "#1f6feb",
-          border: "#79c0ff",
-          highlight: { background: "#388bfd", border: "#a5d6ff" }
-        },
-        chosen: {
-          node: chosen_node
-        },
-        shape: "custom",
-        ctxRenderer: renderNode,
-        size: 18,
-      },
-      edges: {
-        arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-        arrowStrikethrough: false,
-        font: { align: "middle", color: "#000000ff" },
-        color: { color: "rgba(201,209,217,0.35)", highlight: "#c9d1d9" },
-        smooth: { type: "dynamic" },
-        arrows: "to",
-      }
-    }
-  );
-
-  // Save positions when user drags nodes
-
-  network.on("dragEnd", (params) => {
-    const pos = network.getPositions(params.nodes);
-    for (const id of params.nodes) {
-      pinnedPositions.set(id, pos[id]);
-    }
-  });
-
-  window.network = network;
-}

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "dom", "dom.iterable", "esnext"]
+  },
+  "tasks": {
+    "dev": "deno run -A tools/dev.ts",
+    "build": "deno run -A tools/build.ts",
+    "preview": "deno run -ENR jsr:@std/http/file-server dist root/index.html"
+  },
+  "imports": {
+    "sass": "npm:sass@^1.97.2"
+  }
+}

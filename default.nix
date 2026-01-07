@@ -8,6 +8,7 @@
       # wasm-bindgen-cli_0_2_100
       wasm-pack
       binaryen
+      deno
       simple-http-server
     ];
     RUSTC_VERSION = "nightly";

@@ -1,6 +1,5 @@
 use automata::{
-    automata::npda::{self, NPDA},
-    loader::{self, Span, Spanned, lexer::Lexer},
+    loader::{self, Context, Span, Spanned, lexer::Lexer},
 };
 
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -16,40 +15,6 @@ pub fn main() {}
 #[wasm_bindgen]
 pub fn init() {
     console_error_panic_hook::set_once();
-}
-
-#[wasm_bindgen]
-pub fn silly(machine: &str, input: &str) {
-    let table = match npda::TransitionTable::load_table(machine) {
-        Ok((ok, logs)) => {
-            for log in logs.displayable() {
-                println!("{log}")
-            }
-            ok
-        }
-        Err(logs) => {
-            for log in logs.displayable() {
-                println!("{log}")
-            }
-            return;
-        }
-    };
-
-    println!("running on: '{input}'");
-    let mut simulator = npda::Simulator::begin(input, table);
-    loop {
-        match simulator.step() {
-            npda::SimulatorResult::Pending => {}
-            npda::SimulatorResult::Reject => {
-                println!("REJECTED");
-                break;
-            }
-            npda::SimulatorResult::Accept(npda) => {
-                println!("ACCEPT: {npda:?}");
-                break;
-            }
-        }
-    }
 }
 
 #[wasm_bindgen]
@@ -191,18 +156,16 @@ pub struct CompileResult {
 
 #[wasm_bindgen]
 pub fn compile(input: &str) -> CompileResult {
-    let log = match npda::TransitionTable::load_table(input) {
-        Ok((_, logs)) => logs,
-        Err(logs) => logs,
-    };
-
+    let mut ctx = Context::new(input);
+    _ = automata::loader::parse_universal(&mut ctx);
+    
     use std::fmt::Write;
-    let log_formatted = log.displayable().fold(String::new(), |mut s, e| {
+    let log_formatted = ctx.logs_display().fold(String::new(), |mut s, e| {
         write!(&mut s, "{e}").unwrap();
         s
     });
 
-    let log = log
+    let log = ctx.into_logs()
         .into_entries()
         .map(|e| CompileLog {
             level: match e.level {

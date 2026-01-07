@@ -1,0 +1,140 @@
+@import url("./editor.scss");;
+@import url("./terminal.scss");
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #909090;
+}
+
+.wrap {
+    height: 100vh;
+    width: 100vw;
+    display: grid;
+    grid-template-rows: var(--topH, 50vh) 8px 1fr;
+    /* top pane, splitter, editor */
+    overflow: hidden;
+}
+
+/* Top pane: terminal area */
+.topPane {
+    display: grid;
+    grid-template-columns: var(--termW, 50vw) 8px 1fr;
+    /* terminal, splitter, filler */
+    min-height: 80px;
+    overflow: hidden;
+}
+
+/* Bottom pane: editor */
+.bottomPane {
+    min-height: 120px;
+    overflow: hidden;
+}
+
+/* App layout */
+.app {
+    height: 100vh;
+    width: 100vw;
+    display: grid;
+    grid-template-rows: var(--canvasH, 35vh) 8px 1fr;
+    overflow: hidden;
+}
+
+/* ---------- Canvas ---------- */
+.canvasPane {
+    position: relative;
+    overflow: hidden;
+    background: #111;
+}
+
+.graph {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Bottom area (terminal + editor) ---------- */
+/* Bottom area (terminal + editor) */
+.bottomPane {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 8px var(--termW, 40vw);
+    overflow: hidden;
+    /* IMPORTANT */
+}
+
+/* Terminal side */
+.terminalPane {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Editor side */
+.editorPane {
+    height: 100%;
+    overflow: hidden;
+    /* let CodeMirror scroll */
+}
+
+/* ---------- Splitters ---------- */
+.hSplit {
+    cursor: row-resize;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.vSplit {
+    cursor: col-resize;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.hSplit:hover,
+.vSplit:hover {
+    background: rgba(121, 192, 255, 0.25);
+}
+
+
+
+/* Loading screen */
+.centered {
+    margin-right: auto;
+    margin-left: auto;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #f0f0f0;
+    font-size: 24px;
+    font-family: Ubuntu-Light, Helvetica, sans-serif;
+    text-align: center;
+}
+
+.lds-dual-ring {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+}
+
+.lds-dual-ring:after {
+    content: " ";
+    display: block;
+    width: 24px;
+    height: 24px;
+    margin: 0px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    border-color: #fff transparent #fff transparent;
+    animation: lds-dual-ring 1.2s linear infinite;
+}
+
+@keyframes lds-dual-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

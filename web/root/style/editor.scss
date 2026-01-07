@@ -1,0 +1,127 @@
+@import url("tooltip.scss");
+
+/* CodeMirror mount point */
+#editor {
+    height: 100%;
+    width: 100%;
+}
+
+/* VERY IMPORTANT: force CodeMirror to respect container height */
+.cm-editor {
+    height: 100%;
+}
+
+/* CodeMirror’s internal scroller (this is where the scrollbar lives) */
+.cm-scroller {
+    overflow-y: auto !important;
+}
+
+
+
+.diag {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.diag li {
+    margin: 6px 0;
+}
+
+/* --- Syntax colors via CSS classes applied by decorations --- */
+.tok-comment {
+    color: #1a7b24;
+}
+
+.tok-keyword {
+    color: #b99400;
+    font-weight: 600;
+}
+
+.tok-error {
+    color: #ff0505;
+    font-weight: 1000;
+}
+
+.tok-ident {
+    color: #90d4e0;
+}
+
+.tok-brace {
+    color: #d73a49;
+    font-weight: 600;
+}
+
+.tok-punc {
+    color: #ffffff;
+}
+
+.tok-string {
+    color: #03621e;
+}
+
+/* Rainbow bracket depth classes */
+.rb-0 {
+    color: #a35;
+    font-weight: 700;
+}
+
+.rb-1 {
+    color: #ed0;
+    font-weight: 700;
+}
+
+.rb-2 {
+    color: #9d5;
+    font-weight: 700;
+}
+
+.rb-3 {
+    color: #2cb;
+    font-weight: 700;
+}
+
+.rb-4 {
+    color: #36b;
+    font-weight: 700;
+}
+
+.rb-5 {
+    color: #639;
+    font-weight: 700;
+}
+
+
+
+/* Optional: diagnostics panel coloring */
+.diag li.error {
+    color: #d73a49;
+}
+
+.diag li.warning {
+    color: #b08800;
+}
+
+.diag li.info {
+    color: #0366d6;
+}
+
+
+
+/* Severity underline styles */
+.cm-diag-error {
+    text-decoration: underline wavy #d73a49;
+    /* red */
+    text-underline-offset: 2px;
+}
+
+.cm-diag-warning {
+    text-decoration: underline wavy #ffd33d;
+    /* yellow */
+    text-underline-offset: 2px;
+}
+
+.cm-diag-info {
+    text-decoration: underline wavy #79c0ff;
+    /* cyan-ish */
+    text-underline-offset: 2px;
+}

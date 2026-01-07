@@ -59,36 +59,36 @@ pub enum TopLevel<'a> {
     Table(),
 }
 
-use crate::loader::log::Logs;
+use crate::loader::Context;
 
 impl<'a> Spanned<Item<'a>> {
-    pub fn expect_ident(&self, logs: &mut Logs<'a>) -> Option<&'a str> {
+    pub fn expect_ident(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(ident)) => return Some(ident),
             Item::Symbol(Symbol::Epsilon) => {
-                logs.emit_error("expected ident found epsilon", self.1)
+                ctx.emit_error("expected ident found epsilon", self.1)
             }
-            Item::Tuple(_) => logs.emit_error("expected ident found tuple", self.1),
-            Item::List(_) => logs.emit_error("expected ident found list", self.1),
+            Item::Tuple(_) => ctx.emit_error("expected ident found tuple", self.1),
+            Item::List(_) => ctx.emit_error("expected ident found list", self.1),
         }
         None
     }
 
-    pub fn expect_set(&self, logs: &mut Logs<'a>) -> Option<&[Spanned<Item<'a>>]> {
+    pub fn expect_set(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => logs.emit_error("expected set found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => logs.emit_error("expected set found epsilon", self.1),
-            Item::Tuple(_) => logs.emit_error("expected set found tuple", self.1),
+            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected set found ident", self.1),
+            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected set found epsilon", self.1),
+            Item::Tuple(_) => ctx.emit_error("expected set found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
     }
 
-    pub fn expect_list(&self, logs: &mut Logs<'a>) -> Option<&[Spanned<Item<'a>>]> {
+    pub fn expect_list(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => logs.emit_error("expected list found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => logs.emit_error("expected list found epsilon", self.1),
-            Item::Tuple(_) => logs.emit_error("expected list found tuple", self.1),
+            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected list found ident", self.1),
+            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected list found epsilon", self.1),
+            Item::Tuple(_) => ctx.emit_error("expected list found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
@@ -108,34 +108,34 @@ impl<'a> Spanned<Item<'a>> {
         }
     }
 
-    pub fn expect_tuple(&self, logs: &mut Logs<'a>) -> Option<Spanned<&Tuple<'a>>> {
+    pub fn expect_tuple(&self, ctx: &mut Context<'a>) -> Option<Spanned<&Tuple<'a>>> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => logs.emit_error("expected tuple found ident", self.1),
+            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected tuple found ident", self.1),
             Item::Symbol(Symbol::Epsilon) => {
-                logs.emit_error("expected tuple found epsilon", self.1)
+                ctx.emit_error("expected tuple found epsilon", self.1)
             }
             Item::Tuple(tuple) => return Some(Spanned(tuple, self.1)),
-            Item::List(_) => logs.emit_error("expected tuple found list", self.1),
+            Item::List(_) => ctx.emit_error("expected tuple found list", self.1),
         }
         None
     }
 }
 
 impl<'a, 'b> Spanned<&'b Tuple<'a>> {
-    pub fn expect_dfa_transition(&self, _: &mut Logs<'a>) -> ! {
+    pub fn expect_dfa_transition(&self, _: &mut Context<'a>) -> ! {
         todo!()
     }
-    pub fn expect_nfa_transition(&self, _: &mut Logs<'a>) -> ! {
+    pub fn expect_nfa_transition(&self, _: &mut Context<'a>) -> ! {
         todo!()
     }
 
-    pub fn expect_dpda_transition(&self, _: &mut Logs<'a>) -> ! {
+    pub fn expect_dpda_transition(&self, _: &mut Context<'a>) -> ! {
         todo!()
     }
 
     pub fn expect_npda_transition_function(
         &self,
-        logs: &mut Logs<'a>,
+        ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, Spanned<Symbol<'a>>, Spanned<&'a str>)> {
         match &self.0.0[..] {
             [
@@ -149,7 +149,7 @@ impl<'a, 'b> Spanned<&'b Tuple<'a>> {
                     Spanned(symbol, *symbol_span),
                 ));
             }
-            _ => logs.emit_error(
+            _ => ctx.emit_error(
                 "expected NPDA transition function (ident, ident|~, ident)",
                 self.1,
             ),
@@ -158,7 +158,7 @@ impl<'a, 'b> Spanned<&'b Tuple<'a>> {
     }
     pub fn expect_npda_transition(
         &self,
-        logs: &mut Logs<'a>,
+        ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, &'b [Spanned<Item<'a>>])> {
         match &self.0.0[..] {
             [
@@ -167,15 +167,15 @@ impl<'a, 'b> Spanned<&'b Tuple<'a>> {
             ] => {
                 return Some((Spanned(state, *state_span), list.list_weak()));
             }
-            _ => logs.emit_error("expected NPDA transition (ident, item|[item])", self.1),
+            _ => ctx.emit_error("expected NPDA transition (ident, item|[item])", self.1),
         }
         None
     }
 
-    pub fn expect_tm_transition(&self, _: &mut Logs<'a>) -> ! {
+    pub fn expect_tm_transition(&self, _: &Context<'a>) -> ! {
         todo!()
     }
-    pub fn expect_ntm_transition(&self, _: &mut Logs<'a>) -> ! {
+    pub fn expect_ntm_transition(&self, _: &Context<'a>) -> ! {
         todo!()
     }
 }

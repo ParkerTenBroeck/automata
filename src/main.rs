@@ -1,26 +1,24 @@
-use automata::automata::npda;
+use automata::{automata::npda, loader::Context};
 
 fn main() {
     let input = include_str!("../example.npda");
+    let mut ctx = Context::new(input);
 
-    let table = match npda::TransitionTable::load_table(input) {
-        Ok((ok, logs)) => {
-            for log in logs.displayable() {
-                println!("{log}")
-            }
-            ok
-        }
-        Err(logs) => {
-            for log in logs.displayable() {
-                println!("{log}")
-            }
-            return;
-        }
+    let machine = automata::loader::parse_universal(&mut ctx);
+    for log in ctx.logs_display(){
+        println!("{log}")
+    }
+    
+    let machine = match machine{
+        Some(automata::loader::Machine::Npda(npda)) => {
+            npda
+        },
+        None => return,
     };
 
     let input = "aababaaba";
     println!("running on: '{input}'");
-    let mut simulator = npda::Simulator::begin(input, table);
+    let mut simulator = npda::Simulator::begin(input, machine);
     loop {
         match simulator.step() {
             npda::SimulatorResult::Pending => {}
