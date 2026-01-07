@@ -91,7 +91,7 @@ cp -R dist/. ../docs/
 git add ../docs
 
 # Commit if changed
-if git diff --quiet; then
+if git diff  --cached --quiet; then
   echo "✅ No changes to commit in docs/. Skipping commit."
 else
   echo "📝 Committing docs update..."
