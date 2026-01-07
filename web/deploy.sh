@@ -88,14 +88,14 @@ mkdir -p docs
 # Copy contents of dist into docs
 cp -R dist/. ../docs/
 
-git add docs
+git add ../docs
 
 # Commit if changed
 if git diff --quiet; then
   echo "✅ No changes to commit in docs/. Skipping commit."
 else
   echo "📝 Committing docs update..."
-  git commit -m "Deploy: update docs from dist"
+  git commit -m "Deploy"
 fi
 
 echo "🚀 Pushing '$PAGES_BRANCH' to '$REMOTE'..."
