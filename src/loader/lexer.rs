@@ -151,8 +151,15 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
 
             '/' => match self.consume() {
                 Some('/') => loop {
-                    if let Some('\n') | None = self.consume() {
-                        break Ok(Token::Comment(&self.input[start + 2..self.position]));
+                    match self.consume(){
+                        Some('\n') => {
+                            self.backtrack();
+                            break Ok(Token::Comment(&self.input[start + 2..=self.position]));
+                        }
+                        None => {
+                            break Ok(Token::Comment(&self.input[start + 2..=self.position]));
+                        }
+                        _ => {}
                     }
                 },
                 Some('*') => loop {

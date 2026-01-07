@@ -20,7 +20,6 @@ await Deno.mkdir(DIST, { recursive: true });
 
 
 console.log("compiling scss...");
-
 const result = sass.compile(String(new URL("style/style.scss", ROOT).pathname), {
   style: "compressed",
 });
@@ -29,7 +28,6 @@ await Deno.writeTextFile(new URL("style.css", DIST), result.css);
 console.log("Compiling wasm lib...");
 await run(["wasm-pack", "build", "--target", "web", "--release", "--out-dir", "wasm"], "");
 await Deno.copyFile(new URL("automata_web_bg.wasm", WASM), new URL("automata_web_bg.wasm", DIST));
-
 
 console.log("Compiling bundle...");
 const bundle = new Deno.Command(Deno.execPath(), {

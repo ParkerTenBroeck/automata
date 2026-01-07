@@ -20,23 +20,23 @@
 
 
     <div class="app" style="display:none" id="app">
-        <section class="canvasPane" id="canvasPane">
+        <section>
             <div id="graph" class="graph"></div>
 
             <button id="togglePhysics">Toggle Physics</button>
             <button id="resetLayout">Reset Layout</button>
         </section>
 
-        <div class="hSplit" id="hSplit" title="Drag to resize canvas height"></div>
+        <div class="hSplit" style="--split-default: 50%" title="Drag to resize canvas height"></div>
 
-        <section class="bottomPane" id="bottomPane">
+        <section>
+            <div class="vscroll">
+                <div  id="editor" class="editor"></div>
+            </div>
+            
+            <div class="vSplit" style="--split-default: 40%" title="Drag to resize terminal/editor width"></div>
 
-            <main class="editorPane">
-                <div id="editor"></div>
-            </main>
-            <div class="vSplit" id="vSplit" title="Drag to resize terminal/editor width"></div>
-
-            <div class="pane terminalPane">
+            <div class="vscroll">
                 <pre id="terminal" class="terminal"></pre>
             </div>
         </section>

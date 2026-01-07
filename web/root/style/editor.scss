@@ -1,17 +1,16 @@
-@import url("tooltip.scss");
+@use "tooltip.scss";
 
-/* CodeMirror mount point */
-#editor {
+
+.editor {
     height: 100%;
     width: 100%;
 }
 
-/* VERY IMPORTANT: force CodeMirror to respect container height */
+
 .cm-editor {
     height: 100%;
 }
 
-/* CodeMirror’s internal scroller (this is where the scrollbar lives) */
 .cm-scroller {
     overflow-y: auto !important;
 }
