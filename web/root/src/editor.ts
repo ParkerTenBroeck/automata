@@ -8,13 +8,13 @@ import {
   ViewPlugin,
   lineNumbers,
   highlightActiveLineGutter,
+  highlightActiveLine
 } from "npm:@codemirror/view";
 
 import { EditorState, StateField, Text } from "npm:@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "npm:@codemirror/commands";
 import { bracketMatching, indentOnInput } from "npm:@codemirror/language";
 import { closeBrackets } from "npm:@codemirror/autocomplete";
-import { oneDark } from "npm:@codemirror/theme-one-dark";
 
 
 import wasm from "./wasm.ts"
@@ -292,9 +292,9 @@ const state = EditorState.create({
     history(),
     indentOnInput(),
     bracketMatching(),
+    highlightActiveLine(),
     closeBrackets(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
-    oneDark,
 
     analysisField,
     diagHover,

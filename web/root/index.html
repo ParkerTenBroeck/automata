@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Automata</title>
-    
+
     <link href="style.css" rel="stylesheet">
 </head>
 
@@ -28,20 +28,48 @@
             <div class="vSplit" style="--split-default: 20%" title="Drag to resize canvas width"></div>
 
             <section>
-                meow
+                <button id="themeToggle" class="btn btn-grey" title="Toggle light/dark">
+                    🌙 Dark
+                </button>
             </section>
         </section>
 
         <div class="hSplit" style="--split-default: 50%" title="Drag to resize canvas height"></div>
 
-        <div style="padding-bottom: 10px;">
-            <div>
-                <button id="togglePhysics">Toggle Physics</button>
-                <button id="resetLayout">Reset Layout</button>
+        <div style="padding-bottom: 10px">
+            <div class="controls" style="background: var(--bg-0)">
+                <button id="togglePhysics" class="btn btn-toggle active" title="Toggle physics layout">
+                    Physics: ON
+                </button>
+
+                <button id="resetLayout" class="btn btn-grey" title="Re-enable physics on nodes and reset layout">
+                    Reset Layout
+                </button>
+
+                <span class="spacer"></span>
+
+                <button id="resetSim" class="btn btn-blue" title="Stop and reset simulation">
+                    ⟲ Reset
+                </button>
+                <button id="playPause" class="btn btn-green" title="Run / pause simulation">
+                    ▶ Play
+                </button>
+
+                <button id="step" class="btn btn-grey" title="Advance one step">
+                    Step
+                </button>
+
+                <label class="speed">
+                    Speed
+                    <input id="speed" type="range" min="1" max="60" value="10" />
+                    <span id="speedLabel">10x</span>
+                </label>
             </div>
+            <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>
+
             <div style="height:100%">
                 <div class="vscroll">
-                    <div  id="editor" class="editor"></div>
+                    <div id="editor" class="editor"></div>
                 </div>
 
                 <div class="vSplit" style="--split-default: 40%" title="Drag to resize terminal/editor width"></div>

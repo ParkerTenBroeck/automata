@@ -65,7 +65,7 @@ function setFlexFill(pane: HTMLElement) {
 
 export function enableFlexSplitters() {
   // Horizontal: A | hSplit | B (top/split/bottom)
-  for (const splitter of document.querySelectorAll<HTMLElement>(".hSplit")) {
+  for (const splitter of document.querySelectorAll<HTMLElement>(".hSplit:not(.styleOnly)")) {
     const parent = splitter.parentElement as HTMLElement | null;
     if (!parent) continue;
 
@@ -133,7 +133,7 @@ export function enableFlexSplitters() {
   }
 
   // Vertical: A | vSplit | B (left/split/right)
-  for (const splitter of document.querySelectorAll<HTMLElement>(".vSplit")) {
+  for (const splitter of document.querySelectorAll<HTMLElement>(".vSplit:not(.styleOnly)")) {
     const parent = splitter.parentElement as HTMLElement | null;
     if (!parent) continue;
 
@@ -158,7 +158,7 @@ export function enableFlexSplitters() {
     // --split-default: 30% (right pane width)
     // --split-min-a: 220px (min left)
     // --split-min-b: 220px (min right)
-    const defPct = getVarPct(splitter, "--split-default", 30);
+    const defPct = getVarPct(splitter, "--split-default", 50);
     const minA = getVarPx(splitter, "--split-min-a", 220);
     const minB = getVarPx(splitter, "--split-min-b", 220);
 
