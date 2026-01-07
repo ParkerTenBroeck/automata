@@ -58,7 +58,7 @@ if [[ "$LOCAL_MAIN" != "$REMOTE_MAIN" && "$LOCAL_MAIN" == "$BASE_MAIN" ]]; then
 fi
 
 echo "✅ '$MAIN_BRANCH' is up-to-date (or ahead/diverged). Pulling latest..."
-git pull --ff-only "$REMOTE" "$PAGES_BRANCH"
+git pull --ff-only "$REMOTE" "$MAIN_BRANCH"
 
 echo "🏗️  Running build: deno task build"
 deno task build
@@ -73,8 +73,8 @@ git show-ref --verify --quiet "refs/heads/$PAGES_BRANCH" || {
 echo "🌿 Switching to '$PAGES_BRANCH'..."
 git switch -q "$PAGES_BRANCH"
 
-echo "🔀 Fast-forward merging '$MAIN_BRANCH' into '$PAGES_BRANCH'..."
-git merge --ff-only "$MAIN_BRANCH"
+echo "🔀 Merging '$MAIN_BRANCH' into '$PAGES_BRANCH'..."
+git merge "$MAIN_BRANCH"
 
 # Copy dist -> docs (replace docs contents)
 if [[ ! -d "dist" ]]; then
