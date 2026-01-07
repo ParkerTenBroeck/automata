@@ -90,5 +90,14 @@ cp -R dist/. ../docs/
 
 # Commit if changed
 if git diff --quiet; then
-  echo "✅ No changes to commit 
-::contentReference[oaicite:0]{index=0}
+  echo "✅ No changes to commit in docs/. Skipping commit."
+else
+  echo "📝 Committing docs update..."
+  git add docs
+  git commit -m "Deploy: update docs from dist"
+fi
+
+echo "🚀 Pushing '$PAGES_BRANCH' to '$REMOTE'..."
+git push "$REMOTE" "$PAGES_BRANCH"
+
+echo "✅ Done. Returning to '$ORIG_BRANCH' (handled by trap)."
