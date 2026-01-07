@@ -129,6 +129,8 @@ function createGraph(): vis.Network {
     { nodes, edges },
     {
       layout: { improvedLayout: true },
+      autoResize: true,
+      width: "99%",
       physics: {
         enabled: true,
         solver: "barnesHut",

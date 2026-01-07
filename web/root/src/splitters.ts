@@ -1,12 +1,11 @@
-type Axis = "x" | "y";
-
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-function parsePx(v: string | null, fallback: number): number {
+function getVarPx(el: HTMLElement, name: string, fallback: number) {
+  const v = getComputedStyle(el).getPropertyValue(name).trim();
   if (!v) return fallback;
-  const s = v.trim().toLowerCase();
+  const s = v.toLowerCase();
   if (s.endsWith("px")) {
     const n = Number(s.slice(0, -2));
     return Number.isFinite(n) ? n : fallback;
@@ -15,85 +14,91 @@ function parsePx(v: string | null, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function parsePercent(v: string | null, fallbackPct: number): number {
-  if (!v) return fallbackPct;
-  const s = v.trim().toLowerCase();
+function getVarPct(el: HTMLElement, name: string, fallback: number) {
+  const v = getComputedStyle(el).getPropertyValue(name).trim();
+  if (!v) return fallback;
+  const s = v.toLowerCase();
   if (s.endsWith("%")) {
     const n = Number(s.slice(0, -1));
-    return Number.isFinite(n) ? n : fallbackPct;
+    return Number.isFinite(n) ? n : fallback;
   }
   const n = Number(s);
-  return Number.isFinite(n) ? n : fallbackPct;
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function getCssVar(el: HTMLElement, name: string): string | null {
-  const v = getComputedStyle(el).getPropertyValue(name);
-  return v ? v.trim() : null;
+function ensureFlexParent(parent: HTMLElement, axis: "row" | "column") {
+  // Don't stomp on an existing layout if it's already flex in the right direction
+  const cs = getComputedStyle(parent);
+  if (cs.display !== "flex") parent.style.display = "flex";
+  parent.style.flexDirection = axis;
+  parent.style.overflow = "hidden";
 }
 
-/**
- * Generic rule:
- * - hSplit controls the size of the FIRST pane (top) as a percent of parent height
- * - vSplit controls the size of the THIRD pane (right) as a percent of parent width
- *
- * This matches common editor layouts:
- *   rows: [A][split][B] => A sized, B flex
- *   cols: [A][split][B] => B sized, A flex
- */
-export function enableGenericSplitters() {
-  enableAll("y", ".hSplit");
-  enableAll("x", ".vSplit");
+function ensurePaneCanShrink(pane: HTMLElement) {
+  // Critical for nested flex layouts (otherwise children overflow)
+  pane.style.minWidth = "0";
+  pane.style.minHeight = "0";
 }
 
-function enableAll(axis: Axis, selector: string) {
-  for (const splitter of document.querySelectorAll<HTMLElement>(selector)) {
+function setFixedSize(
+  pane: HTMLElement,
+  axis: "x" | "y",
+  px: number,
+) {
+  // For flex: fixed pane should not grow/shrink, basis = px
+  pane.style.flexGrow = "0";
+  pane.style.flexShrink = "0";
+  pane.style.flexBasis = `${px}px`;
+
+  // Helps some browsers respect size
+  if (axis === "x") {
+    pane.style.width = `${px}px`;
+  } else {
+    pane.style.height = `${px}px`;
+  }
+}
+
+function setFlexFill(pane: HTMLElement) {
+  // Fill remaining space
+  pane.style.flex = "1 1 auto";
+}
+
+export function enableFlexSplitters() {
+  // Horizontal: A | hSplit | B (top/split/bottom)
+  for (const splitter of document.querySelectorAll<HTMLElement>(".hSplit")) {
     const parent = splitter.parentElement as HTMLElement | null;
     if (!parent) continue;
 
-    // Require exactly A | splitter | B
-    const kids = Array.from(parent.children);
+    const kids = Array.from(parent.children) as HTMLElement[];
     if (kids.length !== 3 || kids[1] !== splitter) {
-      console.warn("Splitter parent must have exactly 3 children: A | splitter | B", parent);
+      console.warn("hSplit parent must be A | splitter | B", parent);
       continue;
     }
 
-    const gap = axis === "y" ? splitter.getBoundingClientRect().height || 8
-                             : splitter.getBoundingClientRect().width || 8;
+    const a = kids[0];
+    const b = kids[2];
 
-    // Read per-splitter overrides from CSS variables (optional)
-    // Defaults:
-    //  - default size = 60% (hSplit) or 30% (vSplit)
-    //  - minA/minB = 80/180 for hSplit, 220/220 for vSplit
-    const defaultPct = parsePercent(
-      getCssVar(splitter, "--split-default"),
-      axis === "y" ? 60 : 30,
-    );
+    ensureFlexParent(parent, "column");
+    ensurePaneCanShrink(a);
+    ensurePaneCanShrink(b);
+    setFlexFill(b); // bottom fills
 
-    const minA = parsePx(
-      getCssVar(splitter, "--split-min-a"),
-      axis === "y" ? 80 : 220,
-    );
+    const gap = splitter.getBoundingClientRect().height || 8;
+    splitter.style.flex = `0 0 ${gap}px`;
 
-    const minB = parsePx(
-      getCssVar(splitter, "--split-min-b"),
-      axis === "y" ? 180 : 220,
-    );
+    // Optional per-splitter CSS vars:
+    // --split-default: 60%  (of parent height)
+    // --split-min-a: 80px
+    // --split-min-b: 180px
+    const defPct = getVarPct(splitter, "--split-default", 60);
+    const minA = getVarPx(splitter, "--split-min-a", 80);
+    const minB = getVarPx(splitter, "--split-min-b", 180);
 
-    // Make parent a grid automatically (no container classes needed)
-    parent.style.display = "grid";
-    parent.style.overflow = "hidden";
-
-    // Apply initial template if none set yet
-    if (axis === "y") {
-      // top sized in %, bottom flex
-      if (!parent.style.gridTemplateRows) {
-        parent.style.gridTemplateRows = `${defaultPct}% ${gap}px 1fr`;
-      }
-    } else {
-      // right sized in %, left flex
-      if (!parent.style.gridTemplateColumns) {
-        parent.style.gridTemplateColumns = `1fr ${gap}px ${defaultPct}%`;
-      }
+    // Set initial size (A is fixed)
+    {
+      const r = parent.getBoundingClientRect();
+      const px = clamp((defPct / 100) * r.height, minA, r.height - gap - minB);
+      setFixedSize(a, "y", px);
     }
 
     let dragging = false;
@@ -101,29 +106,18 @@ function enableAll(axis: Axis, selector: string) {
     splitter.addEventListener("pointerdown", (e) => {
       dragging = true;
       splitter.setPointerCapture(e.pointerId);
-      document.body.style.cursor = axis === "y" ? "row-resize" : "col-resize";
+      document.body.style.cursor = "row-resize";
       e.preventDefault();
     });
 
     splitter.addEventListener("pointermove", (e) => {
       if (!dragging) return;
-      const rect = parent.getBoundingClientRect();
+      const r = parent.getBoundingClientRect();
+      const y = e.clientY - r.top;
 
-      if (axis === "y") {
-        // control FIRST pane size (top) by mouse Y
-        const y = e.clientY - rect.top;
-        const maxA = rect.height - gap - minB;
-        const newA = clamp(y, minA, maxA);
-        const pct = (newA / rect.height) * 100;
-        parent.style.gridTemplateRows = `${pct}% ${gap}px 1fr`;
-      } else {
-        // control THIRD pane size (right) by distance from right edge
-        const xFromRight = rect.right - e.clientX;
-        const maxB = rect.width - gap - minA;
-        const newB = clamp(xFromRight, minB, maxB);
-        const pct = (newB / rect.width) * 100;
-        parent.style.gridTemplateColumns = `1fr ${gap}px ${pct}%`;
-      }
+      const maxA = r.height - gap - minB;
+      const newA = clamp(y, minA, maxA);
+      setFixedSize(a, "y", newA);
     });
 
     splitter.addEventListener("pointerup", (e) => {
@@ -136,33 +130,76 @@ function enableAll(axis: Axis, selector: string) {
       dragging = false;
       document.body.style.cursor = "";
     });
+  }
 
-    // Optional: keep within bounds on resize (no stored state needed)
-    globalThis.window.addEventListener("resize", () => {
-      const rect = parent.getBoundingClientRect();
-      if (axis === "y") {
-        // read current pct from template if possible; otherwise skip
-        const parts = (parent.style.gridTemplateRows || "").split(" ");
-        if (parts.length >= 3 && parts[0].endsWith("%")) {
-          const pct = parseFloat(parts[0]);
-          const px = (pct / 100) * rect.height;
-          const maxA = rect.height - gap - minB;
-          const clampedPx = clamp(px, minA, maxA);
-          const clampedPct = (clampedPx / rect.height) * 100;
-          parent.style.gridTemplateRows = `${clampedPct}% ${gap}px 1fr`;
-        }
-      } else {
-        const parts = (parent.style.gridTemplateColumns || "").split(" ");
-        if (parts.length >= 3 && parts[2].endsWith("%")) {
-          const pct = parseFloat(parts[2]);
-          const px = (pct / 100) * rect.width;
-          const maxB = rect.width - gap - minA;
-          const clampedPx = clamp(px, minB, maxB);
-          const clampedPct = (clampedPx / rect.width) * 100;
-          parent.style.gridTemplateColumns = `1fr ${gap}px ${clampedPct}%`;
-        }
-      }
+  // Vertical: A | vSplit | B (left/split/right)
+  for (const splitter of document.querySelectorAll<HTMLElement>(".vSplit")) {
+    const parent = splitter.parentElement as HTMLElement | null;
+    if (!parent) continue;
+
+    const kids = Array.from(parent.children) as HTMLElement[];
+    if (kids.length !== 3 || kids[1] !== splitter) {
+      console.warn("vSplit parent must be A | splitter | B", parent);
+      continue;
+    }
+
+    const a = kids[0];
+    const b = kids[2];
+
+    ensureFlexParent(parent, "row");
+    ensurePaneCanShrink(a);
+    ensurePaneCanShrink(b);
+    setFlexFill(a); // left fills
+
+    const gap = splitter.getBoundingClientRect().width || 8;
+    splitter.style.flex = `0 0 ${gap}px`;
+
+    // Optional per-splitter CSS vars:
+    // --split-default: 30% (right pane width)
+    // --split-min-a: 220px (min left)
+    // --split-min-b: 220px (min right)
+    const defPct = getVarPct(splitter, "--split-default", 30);
+    const minA = getVarPx(splitter, "--split-min-a", 220);
+    const minB = getVarPx(splitter, "--split-min-b", 220);
+
+    // Set initial size (B is fixed)
+    {
+      const r = parent.getBoundingClientRect();
+      const px = clamp((defPct / 100) * r.width, minB, r.width - gap - minA);
+      setFixedSize(b, "x", px);
+    }
+
+    let dragging = false;
+
+    splitter.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      splitter.setPointerCapture(e.pointerId);
+      document.body.style.cursor = "col-resize";
+      e.preventDefault();
+    });
+
+    splitter.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const r = parent.getBoundingClientRect();
+
+      // Right pane width = distance from right edge
+      const xFromRight = r.right - e.clientX;
+
+      const maxB = r.width - gap - minA;
+      const newB = clamp(xFromRight, minB, maxB);
+      setFixedSize(b, "x", newB);
+    });
+
+    splitter.addEventListener("pointerup", (e) => {
+      dragging = false;
+      document.body.style.cursor = "";
+      splitter.releasePointerCapture(e.pointerId);
+    });
+
+    splitter.addEventListener("pointercancel", () => {
+      dragging = false;
+      document.body.style.cursor = "";
     });
   }
 }
-enableGenericSplitters();
+enableFlexSplitters();

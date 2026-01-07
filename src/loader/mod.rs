@@ -101,6 +101,7 @@ pub fn parse_universal(ctx: &mut Context<'_>) -> Option<Machine> {
 
     use Spanned as S;
 
+    #[derive(Debug)]
     enum Type{
         Dfa,
         Nfa,
@@ -138,11 +139,10 @@ pub fn parse_universal(ctx: &mut Context<'_>) -> Option<Machine> {
     }
 
     Some(match parse_type(items.next(), ctx)?{
-        Type::Dfa => todo!(),
-        Type::Nfa => todo!(),
-        Type::Dpda => todo!(),
         Type::Npda => Machine::Npda(npda::Npda::load_from_ast(items, ctx)?),
-        Type::Tm => todo!(),
-        Type::Ntm => todo!(),
+        ty => {
+            ctx.emit_error_locless(format!("currently unsupported type {ty:?}"));
+            return None;
+        }
     })
 }

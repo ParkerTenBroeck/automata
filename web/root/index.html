@@ -21,25 +21,34 @@
 
     <div class="app" style="display:none" id="app">
         <section>
-            <div id="graph" class="graph"></div>
+            <section>
+                <div id="graph" class="graph"></div>
+            </section>
 
-            <button id="togglePhysics">Toggle Physics</button>
-            <button id="resetLayout">Reset Layout</button>
+            <div class="vSplit" style="--split-default: 20%" title="Drag to resize canvas width"></div>
+
+            <section>
+                meow
+            </section>
         </section>
 
         <div class="hSplit" style="--split-default: 50%" title="Drag to resize canvas height"></div>
 
-        <section>
-            <div class="vscroll">
-                <div  id="editor" class="editor"></div>
+        <div style="padding-bottom: 10px;">
+            <div>
+                <button id="togglePhysics">Toggle Physics</button>
+                <button id="resetLayout">Reset Layout</button>
             </div>
-            
-            <div class="vSplit" style="--split-default: 40%" title="Drag to resize terminal/editor width"></div>
+            <div style="height:100%">
+                <div class="vscroll">
+                    <div  id="editor" class="editor"></div>
+                </div>
 
-            <div class="vscroll">
-                <pre id="terminal" class="terminal"></pre>
+                <div class="vSplit" style="--split-default: 40%" title="Drag to resize terminal/editor width"></div>
+
+                <div id="terminal" class="terminal"></div>
             </div>
-        </section>
+        </div>
     </div>
 
 
