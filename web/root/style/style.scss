@@ -1,46 +1,60 @@
 @use "editor.scss";
 @use "terminal.scss";
 @use "loading.scss";
+@use "controls.scss";
+@use "themes.scss";
 
 html,
 body {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #909090;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  color: var(--fg-0);
+  font-family: var(--font-ui);
+  background: #909090;
 }
 
 .app {
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--bg-0);
 }
 
 .graph {
-    width: 100%;
-    height: 100%;
-    background: #111;
+  width: 100%;
+  height: 100%;
+  background: var(--graph-bg);
 }
 
 .vscroll {
-    height: 100%;
-    overflow-x: scroll;
+  height: 100%;
+  overflow-x: scroll;
 }
 
 .hSplit {
-    cursor: row-resize;
+    :not( .styleOnly){
+        cursor: col-resize;
+    }
     height: 8px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--separator-bg);
+    transition:
+        background var(--dur-med) var(--ease-standard),
+        box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .vSplit {
-    cursor: col-resize;
+    :not( .styleOnly){
+        cursor: col-resize;
+    }
     width: 8px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--separator-bg);
+    transition:
+        background var(--dur-med) var(--ease-standard),
+        box-shadow var(--dur-fast) var(--ease-standard);
 }
 
-.hSplit:hover,
-.vSplit:hover {
-    background: rgba(121, 192, 255, 0.25);
+.hSplit:hover:not(.styleOnly),
+.vSplit:hover:not(.styleOnly) {
+  background: var(--separator-hover);
 }

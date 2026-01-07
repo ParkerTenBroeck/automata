@@ -1,9 +1,9 @@
 .terminal {
-    background: #0b0f14;
-    color: #c9d1d9;
+    background: var(--bg-1);
+    color: var(--fg-0);
     padding: 1em;
     margin: 0px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 12.5px;
     line-height: 1.35;
     white-space: pre-wrap;
@@ -18,31 +18,31 @@
 .ansi-bold { font-weight: 700; }
 .ansi-dim { opacity: 0.7; }
 
-/* Foreground colors (standard + bright) */
-.ansi-fg-30 { color: #0b0f14; }  /* black */
-.ansi-fg-31 { color: #ff7b72; }  /* red */
-.ansi-fg-32 { color: #7ee787; }  /* green */
-.ansi-fg-33 { color: #f2cc60; }  /* yellow */
-.ansi-fg-34 { color: #79c0ff; }  /* blue */
-.ansi-fg-35 { color: #d2a8ff; }  /* magenta */
-.ansi-fg-36 { color: #a5d6ff; }  /* cyan */
-.ansi-fg-37 { color: #c9d1d9; }  /* white */
+/* Foreground colors */
+.ansi-fg-30 { color: var(--ansi-fg-30); }
+.ansi-fg-31 { color: var(--ansi-fg-31); }
+.ansi-fg-32 { color: var(--ansi-fg-32); }
+.ansi-fg-33 { color: var(--ansi-fg-33); }
+.ansi-fg-34 { color: var(--ansi-fg-34); }
+.ansi-fg-35 { color: var(--ansi-fg-35); }
+.ansi-fg-36 { color: var(--ansi-fg-36); }
+.ansi-fg-37 { color: var(--ansi-fg-37); }
 
-.ansi-fg-90 { color: #6e7681; }  /* bright black / gray */
-.ansi-fg-91 { color: #ffa198; }
-.ansi-fg-92 { color: #a6f3a6; }
-.ansi-fg-93 { color: #ffe082; }
-.ansi-fg-94 { color: #a5d6ff; }
-.ansi-fg-95 { color: #e3b8ff; }
-.ansi-fg-96 { color: #c7f0ff; }
-.ansi-fg-97 { color: #ffffff; }
+.ansi-fg-90 { color: var(--ansi-fg-90); }
+.ansi-fg-91 { color: var(--ansi-fg-91); }
+.ansi-fg-92 { color: var(--ansi-fg-92); }
+.ansi-fg-93 { color: var(--ansi-fg-93); }
+.ansi-fg-94 { color: var(--ansi-fg-94); }
+.ansi-fg-95 { color: var(--ansi-fg-95); }
+.ansi-fg-96 { color: var(--ansi-fg-96); }
+.ansi-fg-97 { color: var(--ansi-fg-97); }
 
-/* Background colors (optional) */
-.ansi-bg-40 { background: #0b0f14; }
-.ansi-bg-41 { background: rgba(255, 123, 114, 0.22); }
-.ansi-bg-42 { background: rgba(126, 231, 135, 0.18); }
-.ansi-bg-43 { background: rgba(242, 204, 96, 0.18); }
-.ansi-bg-44 { background: rgba(121, 192, 255, 0.18); }
-.ansi-bg-45 { background: rgba(210, 168, 255, 0.18); }
-.ansi-bg-46 { background: rgba(165, 214, 255, 0.18); }
-.ansi-bg-47 { background: rgba(201, 209, 217, 0.10); }
+/* Background colors */
+.ansi-bg-40 { background: var(--ansi-bg-40); }
+.ansi-bg-41 { background: var(--ansi-bg-41); }
+.ansi-bg-42 { background: var(--ansi-bg-42); }
+.ansi-bg-43 { background: var(--ansi-bg-43); }
+.ansi-bg-44 { background: var(--ansi-bg-44); }
+.ansi-bg-45 { background: var(--ansi-bg-45); }
+.ansi-bg-46 { background: var(--ansi-bg-46); }
+.ansi-bg-47 { background: var(--ansi-bg-47); }

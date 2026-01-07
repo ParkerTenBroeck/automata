@@ -3,11 +3,8 @@
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
 
-
-
-const nodes = new vis.DataSet<vis.Node>();
-const edges = new vis.DataSet<vis.Edge>();
-
+export const nodes = new vis.DataSet<vis.Node>();
+export const edges = new vis.DataSet<vis.Edge>();
 
 const automaton = {
   states: ["q0", "q1"],
@@ -18,29 +15,29 @@ const automaton = {
     {
       from: "q0",
       to: "q0",
-      label: "ε, z0 → A z0\n"
+      label: "ε, z0 → A z0\n",
     },
     {
       from: "q0",
       to: "q0",
-      label: "ε, z0 → B z0"
+      label: "ε, z0 → B z0",
     },
     {
       from: "q0",
       to: "q1",
-      label: "ε, z0 → z0"
+      label: "ε, z0 → z0",
     },
     {
       from: "q1",
       to: "q1",
-      label: "a, A → ε"
+      label: "a, A → ε",
     },
     {
       from: "q1",
       to: "q1",
-      label: "b, B → ε"
-    }
-  ]
+      label: "b, B → ε",
+    },
+  ],
 };
 
 function renderNode({
@@ -57,7 +54,6 @@ function renderNode({
       ctx.save();
       const r = style.size;
 
-
       ctx.beginPath();
       ctx.arc(x, y, r, 0, 2 * Math.PI);
       ctx.fillStyle = "red";
@@ -67,28 +63,26 @@ function renderNode({
       ctx.stroke();
 
       ctx.fillStyle = "black";
-      ctx.textAlign = 'center';
+      ctx.textAlign = "center";
       ctx.fillText(label, x, y, r);
 
-
-      ctx.textAlign = 'center';
-      ctx.strokeStyle = 'white';
+      ctx.textAlign = "center";
+      ctx.strokeStyle = "white";
       ctx.fillStyle = "black";
       let cy = y - (r + 10);
       for (const part of "meow[]\nbeeep".split("\n").reverse()) {
         const metrics = ctx.measureText(part);
-        cy -= metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        cy -= metrics.actualBoundingBoxAscent +
+          metrics.actualBoundingBoxDescent;
         ctx.strokeText(part, x, cy);
         ctx.fillText(part, x, cy);
       }
-
 
       ctx.restore();
     },
     nodeDimensions: { width: 20, height: 20 },
   };
 }
-
 
 // Populate nodes
 for (const state of automaton.states) {
@@ -104,24 +98,31 @@ automaton.transitions.forEach((t, i) => {
     id: `e${i}`,
     from: t.from,
     to: t.to,
-    label: t.label
+    label: t.label,
   });
 });
 
-
-function chosen_edge(_: vis.ChosenNodeValues, id: vis.IdType,selected: boolean, hovered: boolean) {
-  console.log("edge", id, selected, hovered)
+function chosen_edge(
+  _: vis.ChosenNodeValues,
+  id: vis.IdType,
+  selected: boolean,
+  hovered: boolean,
+) {
+  console.log("edge", id, selected, hovered);
 }
 
-function chosen_node(_: vis.ChosenNodeValues, id: vis.IdType,selected: boolean, hovered: boolean) {
-  console.log("node", id, selected, hovered)
+function chosen_node(
+  _: vis.ChosenNodeValues,
+  id: vis.IdType,
+  selected: boolean,
+  hovered: boolean,
+) {
+  console.log("node", id, selected, hovered);
 }
 
-
-const network: vis.Network = createGraph();
+export const network: vis.Network = createGraph();
 
 function createGraph(): vis.Network {
-
   const container = document.getElementById("graph")!;
 
   const network = new vis.Network(
@@ -129,13 +130,15 @@ function createGraph(): vis.Network {
     { nodes, edges },
     {
       layout: { improvedLayout: true },
-      autoResize: true,
-      width: "99%",
       physics: {
         enabled: true,
         solver: "barnesHut",
-        barnesHut: { gravitationalConstant: -8000, springLength: 120, springConstant: 0.04 },
-        stabilization: { iterations: 200 }
+        barnesHut: {
+          gravitationalConstant: -8000,
+          springLength: 120,
+          springConstant: 0.04,
+        },
+        stabilization: { iterations: 200 },
       },
       interaction: {
         dragNodes: true,
@@ -149,7 +152,7 @@ function createGraph(): vis.Network {
         color: {
           background: "#1f6feb",
           border: "#79c0ff",
-          highlight: { background: "#388bfd", border: "#a5d6ff" }
+          highlight: { background: "#388bfd", border: "#a5d6ff" },
         },
         // @ts-expect-error  bad library
         chosen: {
@@ -162,7 +165,7 @@ function createGraph(): vis.Network {
       edges: {
         chosen: {
           // @ts-expect-error bad library
-          edge: chosen_edge
+          edge: chosen_edge,
         },
         arrowStrikethrough: false,
         font: { align: "middle", color: "#000000ff" },
@@ -170,20 +173,19 @@ function createGraph(): vis.Network {
         // @ts-expect-error  bad library
         smooth: { type: "dynamic" },
         arrows: "to",
-      }
-    }
+      },
+    },
   );
-  vis.DataSet
+  vis.DataSet;
 
   network.on("doubleClick", (params: any) => {
-    
-    for (const node_id of params.nodes){
+    for (const node_id of params.nodes) {
       // @ts-expect-error bad library
       const node: vis.Node = nodes.get(node_id)!;
       node.physics = !node.physics;
-      nodes.update(node)
+      nodes.update(node);
     }
   });
-  
+
   return network;
 }

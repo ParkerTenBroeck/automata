@@ -1,126 +1,131 @@
 @use "tooltip.scss";
 
+/* Editor layout */
 
 .editor {
-    height: 100%;
-    width: 100%;
-}
-
-
-.cm-editor {
-    height: 100%;
+  height: 100%;
+  width: 100%;
 }
 
 .cm-scroller {
-    overflow-y: auto !important;
+  overflow-y: auto !important;
+  background: var(--bg-0);
 }
 
-
-
-.diag {
-    margin: 0;
-    padding-left: 18px;
+.cm-editor {
+  height: 100%;
+  background: var(--bg-1);
+  color: var(--fg-0);
 }
 
-.diag li {
-    margin: 6px 0;
+.cm-gutters {
+  background: var(--bg-2) !important;
+  color: var(--fg-muted);
+  border-right: 1px solid color-mix(in srgb, var(--fg-muted) 20%, transparent)!important;
 }
 
-/* --- Syntax colors via CSS classes applied by decorations --- */
+.cm-lineNumbers .cm-gutterElement {
+  padding: 0 10px 0 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.cm-activeLine {
+  background: color-mix(in srgb, var(--accent) 6%, transparent)!important;
+}
+
+.cm-activeLineGutter {
+  background: color-mix(in srgb, var(--accent) 8%, transparent)!important;
+  color: var(--fg-0);
+}
+
+.cm-cursor {
+  border-left: 2px solid var(--accent)!important;
+}
+
+.cm-focused .cm-cursor {
+  border-left-color: var(--accent)!important;
+}
+
+/* Syntax colors */
+
 .tok-comment {
-    color: #1a7b24;
+  color: color-mix(in srgb, var(--success) 65%, var(--fg-muted));
 }
 
 .tok-keyword {
-    color: #b99400;
-    font-weight: 600;
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .tok-error {
-    color: #ff0505;
-    font-weight: 1000;
+  color: var(--error);
+  font-weight: 700;
 }
 
 .tok-ident {
-    color: #90d4e0;
+  color: var(--accent);
 }
 
 .tok-brace {
-    color: #d73a49;
-    font-weight: 600;
+  color: var(--error);
+  font-weight: 600;
 }
 
 .tok-punc {
-    color: #ffffff;
+  color: var(--fg-0);
 }
 
 .tok-string {
-    color: #03621e;
+  color: color-mix(in srgb, var(--success) 75%, transparent);
 }
 
-/* Rainbow bracket depth classes */
+/* Rainbow brackets */
+
 .rb-0 {
-    color: #a35;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--error) 85%, transparent);
+  font-weight: 700;
 }
 
 .rb-1 {
-    color: #ed0;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--warning) 85%, transparent);
+  font-weight: 700;
 }
 
 .rb-2 {
-    color: #9d5;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--success) 85%, transparent);
+  font-weight: 700;
 }
 
 .rb-3 {
-    color: #2cb;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 85%, transparent);
+  font-weight: 700;
 }
 
 .rb-4 {
-    color: #36b;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--focus) 85%, transparent);
+  font-weight: 700;
 }
 
 .rb-5 {
-    color: #639;
-    font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 60%, var(--fg-muted));
+  font-weight: 700;
 }
 
+/* Severity underline styles*/
 
-
-/* Optional: diagnostics panel coloring */
-.diag li.error {
-    color: #d73a49;
-}
-
-.diag li.warning {
-    color: #b08800;
-}
-
-.diag li.info {
-    color: #0366d6;
-}
-
-
-
-/* Severity underline styles */
 .cm-diag-error {
-    text-decoration: underline wavy #d73a49;
-    /* red */
-    text-underline-offset: 2px;
+  text-decoration: underline wavy var(--error);
+  text-underline-offset: 2px;
 }
 
 .cm-diag-warning {
-    text-decoration: underline wavy #ffd33d;
-    /* yellow */
-    text-underline-offset: 2px;
+  text-decoration: underline wavy var(--warning);
+  text-underline-offset: 2px;
 }
 
 .cm-diag-info {
-    text-decoration: underline wavy #79c0ff;
-    /* cyan-ish */
-    text-underline-offset: 2px;
+  text-decoration: underline wavy var(--accent);
+  text-underline-offset: 2px;
 }
+
