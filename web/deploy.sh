@@ -10,9 +10,10 @@ ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 
-cd "$ROOT_DIR"
+cd "$ROOT_DIR/web"
 
 ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
 
 cleanup() {
   # Always try to return to the original branch
