@@ -56,14 +56,14 @@
 
   --graph-node-bg: #1f6feb;
   --graph-node-border: #388bfd;
-  --graph-node-text: #e6edf3;
+  --graph-node-text: var(--fg-0);
 
   --graph-node-active-bg: #79c0ff;
-  --graph-node-active-border: #a5d6ff;
+  --graph-node-active-border: #ff0000;
 
   --graph-edge: rgba(201, 209, 217, 0.55);
-  --graph-edge-hover: #79c0ff;
-  --graph-edge-active: #a5d6ff;
+  --graph-edge-hover: rgba(201, 209, 217, 0.864);
+  --graph-edge-active: var(--accent);
 
 
   --ansi-fg-30: #0b0f14;   /* black */

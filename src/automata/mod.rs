@@ -72,8 +72,20 @@ pub struct StateMap<T>(Vec<T>);
 
 index!(StateMap, self, self.0, index.0 as usize, index = State);
 
+impl<T> StateMap<T>{
+    pub fn entries(&self) -> impl Iterator<Item = (State, &T)>{
+        self.0.iter().enumerate().map(|(i, v)|(State(i as u16), v))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SymbolMap<T>(Vec<T>);
+
+impl<T> SymbolMap<T>{
+    pub fn entries(&self) -> impl Iterator<Item = (Symbol, &T)>{
+        self.0.iter().enumerate().map(|(i, v)|(Symbol(i as u16), v))
+    }
+}
 
 index!(SymbolMap, self, self.0, index.0 as usize, index = Symbol);
 
@@ -81,6 +93,16 @@ index!(SymbolMap, self, self.0, index.0 as usize, index = Symbol);
 pub struct StateSymbolMap<T> {
     map: Vec<T>,
     max_state: u16,
+}
+
+impl<T> StateSymbolMap<T>{
+    pub fn entries(&self) -> impl Iterator<Item = ((State, Symbol), &T)>{
+        self.map.iter().enumerate().map(|(i, v)|{
+            let state = State((i % self.max_state as usize) as u16);
+            let symbol = Symbol((i / self.max_state as usize) as u16);
+            ((state, symbol), v)
+        })
+    }
 }
 
 index!(
@@ -101,6 +123,12 @@ index!(
 #[derive(Clone, Debug, Default)]
 pub struct CharMap<T>(HashMap<char, T>);
 
+impl<T> CharMap<T>{
+    pub fn entries(&self) -> impl Iterator<Item = (char, &T)>{
+        self.0.iter().map(|(k, v)|(*k, v))
+    }
+}
+
 index!(
     CharMap,
     self,
@@ -113,6 +141,12 @@ index!(
 #[derive(Clone, Debug, Default)]
 pub struct CharEpsilonMap<T>(HashMap<Option<char>, T>);
 
+impl<T> CharEpsilonMap<T>{
+    pub fn entries(&self) -> impl Iterator<Item = (Option<char>, &T)>{
+        self.0.iter().map(|(k, v)|(*k, v))
+    }
+}
+
 index!(
     CharEpsilonMap,
     self,
@@ -122,3 +156,4 @@ index!(
     self.0.entry(Some(char)).or_default()
 );
 index!(CharEpsilonMap, self, self.0, &char, char = Option<char>, self.0.entry(char).or_default());
+

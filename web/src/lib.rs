@@ -1,7 +1,8 @@
-use automata::{
-    loader::{self, Context, Span, Spanned, lexer::Lexer},
-};
+use std::collections::HashMap;
 
+use automata::loader::{self, Context, Span, Spanned, lexer::Lexer};
+
+use serde::Serialize;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
@@ -148,24 +149,84 @@ pub struct CompileLog {
     pub end: Option<usize>,
 }
 
+
+#[derive(Serialize, Debug)]
+pub struct Graph<'a> {
+    initial: &'a str,
+    final_states: Vec<&'a str>,
+    states: Vec<&'a str>,
+    transitions: HashMap<String, String>,
+}
+
 #[wasm_bindgen(getter_with_clone)]
 pub struct CompileResult {
     pub log: Vec<CompileLog>,
     pub log_formatted: String,
+    pub graph: Option<String>,
 }
 
 #[wasm_bindgen]
 pub fn compile(input: &str) -> CompileResult {
     let mut ctx = Context::new(input);
-    _ = automata::loader::parse_universal(&mut ctx);
-    
+    let result = automata::loader::parse_universal(&mut ctx);
+
+    let graph = if let Some(result) = result {
+        match result {
+            loader::Machine::Npda(npda) => {
+                let mut transitions = HashMap::new();
+                for ((from, symbol), to_transitions) in npda.transitions().entries(){
+                    let from = npda.get_state_name(from).unwrap_or("<INVALID>");
+                    let symbol = npda.get_symbol_name(symbol).unwrap_or("<INVALID>");
+                    for (char, to) in to_transitions.entries(){
+                        for to in to{
+                            let to_state = npda.get_state_name(to.state()).unwrap_or("<INVALID>");
+                            let string: &mut String = transitions.entry(format!("{from}#{to_state}")).or_default();
+                            if !string.is_empty(){
+                                string.push('\n');
+                            }
+                            let char = char.unwrap_or('ε');
+                            let stack = to.stack().iter().map(|s|npda.get_symbol_name(*s).unwrap_or("<INVALID>")).fold(String::new(), |mut s, b|{
+                                if !s.is_empty(){
+                                    s.push_str(", ");
+                                }
+                                s.push_str(b);
+                                s
+                            });
+                            write!(string, "{char}, {symbol} -> [{stack}]").unwrap();
+                            
+                        }
+                    }
+                }
+                let graph = Graph {
+                    states: npda.states().map(|(_, n)| n).collect(),
+                    initial: npda
+                        .get_state_name(npda.initial_state())
+                        .unwrap_or("<INVALID>"),
+                    final_states: npda
+                        .final_states()
+                        .map(|i| {
+                            i.map(|s| npda.get_state_name(s).unwrap_or("<INVALID>"))
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default(),
+                    transitions
+                };
+
+                Some(serde_json::to_string(&graph).unwrap())
+            }
+        }
+    } else {
+        None
+    };
+
     use std::fmt::Write;
     let log_formatted = ctx.logs_display().fold(String::new(), |mut s, e| {
         write!(&mut s, "{e}").unwrap();
         s
     });
 
-    let log = ctx.into_logs()
+    let log = ctx
+        .into_logs()
         .into_entries()
         .map(|e| CompileLog {
             level: match e.level {
@@ -183,5 +244,9 @@ pub fn compile(input: &str) -> CompileResult {
         })
         .collect();
 
-    CompileResult { log, log_formatted }
+    CompileResult {
+        log,
+        log_formatted,
+        graph,
+    }
 }

@@ -1,4 +1,4 @@
-import { network } from "./visualizer.ts";
+import { invalidateGraphThemeCache, network } from "./visualizer.ts";
 
 function cssVar(name: string, fallback = ""): string {
   return getComputedStyle(document.documentElement)
@@ -49,27 +49,39 @@ globalThis.window.matchMedia?.("(prefers-color-scheme: light)")
     setTheme(getPreferredTheme());
   });
 
-export function applyGraphTheme() {
+function applyGraphTheme() {
+  invalidateGraphThemeCache();
+
   network.setOptions({
     nodes: {
-      color: {
-        background: cssVar("--graph-node-bg"),
-        border: cssVar("--graph-node-border"),
-        highlight: {
-          background: cssVar("--graph-node-active-bg"),
-          border: cssVar("--graph-node-active-border"),
-        },
-      },
       font: {
         color: cssVar("--graph-node-text"),
       },
     },
     edges: {
+      labelHighlightBold: true,
+      font: { 
+        align: "middle", 
+        color: cssVar("--fg-0"),
+        strokeColor: cssVar("--bg-0"),
+        bold: {
+          color: cssVar("--fg-1"),
+          mod: ''
+        },
+      },
       color: {
         color: cssVar("--graph-edge"),
         highlight: cssVar("--graph-edge-active"),
         hover: cssVar("--graph-edge-hover"),
       },
+      shadow: {
+        enabled: true,
+        color: cssVar("--bg-2")
+      }
     },
   });
 }
+
+
+
+
