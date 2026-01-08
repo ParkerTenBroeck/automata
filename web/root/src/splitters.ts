@@ -154,10 +154,7 @@ export function enableFlexSplitters() {
     const gap = splitter.getBoundingClientRect().width || 8;
     splitter.style.flex = `0 0 ${gap}px`;
 
-    // Optional per-splitter CSS vars:
-    // --split-default: 30% (right pane width)
-    // --split-min-a: 220px (min left)
-    // --split-min-b: 220px (min right)
+
     const defPct = getVarPct(splitter, "--split-default", 50);
     const minA = getVarPx(splitter, "--split-min-a", 220);
     const minB = getVarPx(splitter, "--split-min-b", 220);
