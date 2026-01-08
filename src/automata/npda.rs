@@ -3,7 +3,17 @@ use std::collections::HashSet;
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct To(State, Vec<Symbol>);
+pub struct To(State, Vec<Symbol>);
+
+impl To{
+    pub fn state(&self) -> State{
+        self.0
+    }
+
+    pub fn stack(&self) -> &[Symbol]{
+        &self.1
+    }
+}
 
 #[derive(Clone, Debug)]
 #[allow(unused)]
@@ -16,6 +26,46 @@ pub struct Npda {
 
     final_states: Option<StateMap<bool>>,
     transitions: StateSymbolMap<CharEpsilonMap<Vec<To>>>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StateTransition<T> {
+    pub from: T,
+    pub to: T,
+}
+
+impl Npda {
+    pub fn get_state_name(&self, state: State) -> Option<&str>{
+        self.state_names.get(state).map(String::as_str)
+    }
+
+    pub fn get_symbol_name(&self, symbol: Symbol) -> Option<&str>{
+        self.symbol_names.get(symbol).map(String::as_str)
+    }
+    
+    pub fn initial_state(&self) -> State{
+        self.initial_state
+    }
+
+    pub fn initial_stack(&self) -> Symbol{
+        self.initial_stack
+    }
+
+    pub fn final_states(&self) -> Option<impl Iterator<Item = State>>{
+        Some(self.final_states.as_ref()?.entries().filter(|&(_, f)| *f).map(|(s, _)| s))
+    }
+    
+    pub fn states(&self) -> impl Iterator<Item = (State, &str)>{
+        self.state_names.entries().map(|s|(s.0, s.1.as_str()))
+    }
+
+    pub fn symbols(&self) -> impl Iterator<Item = (Symbol, &str)>{
+        self.symbol_names.entries().map(|s|(s.0, s.1.as_str()))
+    }
+
+    pub fn transitions(&self) -> &StateSymbolMap<CharEpsilonMap<Vec<To>>>{
+        &self.transitions
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -120,13 +170,14 @@ impl Simulator {
 // ------ parser/semantics
 
 use crate::loader::{
-    Context, DELTA_LOWER, GAMMA_UPPER, SIGMA_UPPER, Spanned, ast::{self, Symbol as Sym}
+    Context, DELTA_LOWER, GAMMA_UPPER, SIGMA_UPPER, Spanned,
+    ast::{self, Symbol as Sym},
 };
 
 impl Npda {
     pub fn load_from_ast<'a>(
         items: impl Iterator<Item = Spanned<ast::TopLevel<'a>>>,
-        ctx: &mut Context<'a>
+        ctx: &mut Context<'a>,
     ) -> Option<Npda> {
         let mut initial_state = None;
         let mut initial_stack = None;
@@ -275,10 +326,7 @@ impl Npda {
                     ctx.emit_error(format!("unknown item {name:?}, expected 'Q' | 'E' | '{SIGMA_UPPER}' | 'sigma' | 'F' | 'T' | '{GAMMA_UPPER}' | 'gamma' | 'I' | 'q0' | 'S' | 'z0'"), dest_s);
                 }
 
-                TL::TransitionFunc(
-                    S((S("d" | DELTA_LOWER | "delta", _), tuple), _),
-                    list,
-                ) => {
+                TL::TransitionFunc(S((S("d" | DELTA_LOWER | "delta", _), tuple), _), list) => {
                     let list = list.set_weak();
                     let Some((state, letter, stack_symbol)) =
                         tuple.as_ref().expect_npda_transition_function(ctx)
@@ -343,10 +391,7 @@ impl Npda {
                                 let ident = symbol.expect_ident(ctx)?;
 
                                 let Some(symbol) = stack_symbols.get(ident).copied() else {
-                                    ctx.emit_error(
-                                        "transition stack symbol not defined",
-                                        symbol.1,
-                                    );
+                                    ctx.emit_error("transition stack symbol not defined", symbol.1);
                                     return None;
                                 };
                                 Some(symbol)
@@ -364,7 +409,9 @@ impl Npda {
                 }
                 TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                     ctx.emit_error(
-                        format!("unknown function {name:?}, expected 'd' | 'delta' | '{DELTA_LOWER}'"),
+                        format!(
+                            "unknown function {name:?}, expected 'd' | 'delta' | '{DELTA_LOWER}'"
+                        ),
                         dest_s,
                     );
                 }
@@ -449,7 +496,7 @@ impl Npda {
             }
         }
 
-        if ctx.contains_errors(){
+        if ctx.contains_errors() {
             return None;
         }
 
