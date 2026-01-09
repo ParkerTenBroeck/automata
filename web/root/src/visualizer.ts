@@ -50,9 +50,13 @@ export function setAutomaton(auto: GraphDef) {
   // Populate edges
   for (const [k, v] of Object.entries(automaton.transitions)) {
     const to_from = k.split("#");
+    const font = {
+      vadjust: -getGraphTheme().edge_font_size*Math.floor(((v.match(/\n/g) || '').length + 1)/2)
+    };
     if (edges.get(k)) {
       edges.update({
         id: k,
+        font,
         from: to_from[0],
         to: to_from[1],
         label: v,
@@ -60,6 +64,7 @@ export function setAutomaton(auto: GraphDef) {
     } else {
       edges.add({
         id: k,
+        font,
         from: to_from[0],
         to: to_from[1],
         label: v,
@@ -108,13 +113,14 @@ function createGraph(): vis.Network {
       layout: { improvedLayout: true },
       physics: {
         enabled: true,
-        solver: "barnesHut",
-        barnesHut: {
-          gravitationalConstant: -8000,
-          springLength: 120,
-          springConstant: 0.04,
-        },
-        stabilization: { iterations: 200 },
+        solver: "forceAtlas2Based",
+        // solver: "barnesHut",
+        // barnesHut: {
+        //   gravitationalConstant: -8000,
+        //   springLength: 120,
+        //   springConstant: 0.04,
+        // },
+        // stabilization: { iterations: 200 },
       },
       interaction: {
         dragNodes: true,
@@ -124,20 +130,14 @@ function createGraph(): vis.Network {
         selectConnectedEdges: false,
       },
       nodes: {
-        font: { color: "#c9d1d9" },
-        color: {
-          background: "#1f6feb",
-          border: "#79c0ff",
-          highlight: { background: "#388bfd", border: "#a5d6ff" },
-        },
+        shape: "custom",
+        size: 18,
         // // @ts-expect-error  bad library
         // chosen: {
         //   node: chosen_node,
         // },
-        shape: "custom",
         // @ts-expect-error  bad library
         ctxRenderer: renderNode,
-        size: 18,
       },
       edges: {
         chosen: {
@@ -145,10 +145,6 @@ function createGraph(): vis.Network {
           // edge: chosen_edge,
         },
         arrowStrikethrough: false,
-        font: { align: "middle", color: "#000000ff" },
-        color: { color: "rgba(201,209,217,0.35)", highlight: "#c9d1d9" },
-        // @ts-expect-error  bad library
-        smooth: { type: "dynamic" },
         arrows: "to",
       },
     },
@@ -179,6 +175,7 @@ export type GraphTheme = {
   current: string;
   edge: string;
   glow: string;
+  edge_font_size: number,
 };
 
 let _graphTheme: GraphTheme | null = null;
@@ -187,7 +184,7 @@ export function invalidateGraphThemeCache() {
   _graphTheme = null;
 }
 
-function getGraphTheme(): GraphTheme {
+export function getGraphTheme(): GraphTheme {
   function cssVar(name: string, fallback = ""): string {
     return getComputedStyle(document.documentElement)
       .getPropertyValue(name)
@@ -212,6 +209,7 @@ function getGraphTheme(): GraphTheme {
     edge: cssVar("--graph-edge", "rgba(201,209,217,0.55)"),
 
     glow: cssVar("--accent", "#79c0ff"),
+    edge_font_size: 10,
   };
 
   return _graphTheme;

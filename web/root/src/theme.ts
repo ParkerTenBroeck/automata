@@ -1,4 +1,4 @@
-import { invalidateGraphThemeCache, network } from "./visualizer.ts";
+import { getGraphTheme, invalidateGraphThemeCache, network } from "./visualizer.ts";
 
 function cssVar(name: string, fallback = ""): string {
   return getComputedStyle(document.documentElement)
@@ -56,16 +56,22 @@ function applyGraphTheme() {
     nodes: {
       font: {
         color: cssVar("--graph-node-text"),
+        bold: {
+          color: cssVar("--fg-1"),
+          mod: ''
+        },
       },
     },
     edges: {
       labelHighlightBold: true,
       font: { 
-        align: "middle", 
+        align: "top", 
+        size: getGraphTheme().edge_font_size,
         color: cssVar("--fg-0"),
         strokeColor: cssVar("--bg-0"),
         bold: {
           color: cssVar("--fg-1"),
+          size: getGraphTheme().edge_font_size,
           mod: ''
         },
       },
