@@ -211,8 +211,9 @@ impl Npda {
                                 State(0)
                             }
                         };
-                        if states.insert(ident, state).is_some() {
+                        if let Some(old) = states.insert(ident, state) {
                             ctx.emit_error("state redefined", item.1);
+                            states.insert(ident, old);
                         }
                     }
 
@@ -284,8 +285,9 @@ impl Npda {
                                 Symbol(0)
                             }
                         };
-                        if stack_symbols.insert(ident, symbol).is_some() {
+                        if let Some(old) = stack_symbols.insert(ident, symbol) {
                             ctx.emit_error("stack symbol redefined", item.1);
+                            stack_symbols.insert(ident, old);
                         }
                     }
 

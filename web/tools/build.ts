@@ -14,10 +14,13 @@ async function run(cmd: string[], cwd?: string) {
   }
 }
 
-// Clean dist
+console.log("clean dist...");
 await Deno.remove(DIST, { recursive: true }).catch(() => {});
 await Deno.mkdir(DIST, { recursive: true });
 
+
+console.log("copy assets");
+await copyFolder(new URL("assets/", ROOT), DIST);
 
 console.log("compiling scss...");
 const result = sass.compile(String(new URL("style/style.scss", ROOT).pathname), {
@@ -40,3 +43,23 @@ if (!bundleRes.success) {
 }
 
 console.log("Build complete: dist/");
+
+
+
+export async function copyFolder(
+  srcDir: URL,
+  destDir: URL,
+): Promise<void> {
+  await Deno.mkdir(destDir, { recursive: true });
+
+  for await (const entry of Deno.readDir(srcDir)) {
+    const srcPath = new URL(entry.name, srcDir.href);
+    const destPath = new URL(entry.name, destDir.href);
+  
+    if (entry.isDirectory) {
+      await copyFolder(srcPath, destPath);
+    } else if (entry.isFile) {
+      await Deno.copyFile(srcPath, destPath);
+    }
+  }
+}

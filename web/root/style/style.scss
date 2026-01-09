@@ -29,7 +29,17 @@ body {
 
 .vscroll {
   height: 100%;
-  overflow-x: scroll;
+  overflow-y: scroll;
+}
+
+.flexCol{
+  display: flex;
+  flex-direction: column;
+}
+
+.flexRow{
+  display: flex;
+  flex-direction: row;
 }
 
 .hSplit {
@@ -37,6 +47,8 @@ body {
         cursor: col-resize;
     }
     height: 8px;
+    min-height: 8px;
+    max-height: 8px;
     background: var(--separator-bg);
     transition:
         background var(--dur-med) var(--ease-standard),
@@ -48,6 +60,8 @@ body {
         cursor: col-resize;
     }
     width: 8px;
+    min-width: 8px;
+    max-width: 8px;
     background: var(--separator-bg);
     transition:
         background var(--dur-med) var(--ease-standard),

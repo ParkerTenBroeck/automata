@@ -18,6 +18,10 @@
   color: var(--fg-0);
 }
 
+.cm-content{
+  caret-color: var(--fg-0)!important;
+}
+
 .cm-gutters {
   background: var(--bg-2) !important;
   color: var(--fg-muted);

@@ -27,6 +27,7 @@ togglePhysicsBtn.onclick = () => {
   const enabled = !togglePhysicsBtn.classList.contains("active");
   setPhysicsButtonUI(enabled);
   network.setOptions({ physics: { enabled } });
+  network.setOptions({edges: {smooth: enabled}});
 };
 
 setPhysicsButtonUI(togglePhysicsBtn.classList.contains("active"));
