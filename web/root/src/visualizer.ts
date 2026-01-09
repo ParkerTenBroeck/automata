@@ -277,8 +277,6 @@ function renderNode({
 }: any) {
   return {
     drawNode() {
-      // @ts-expect-error bad library
-      const node: vis.Node = nodes.get(id)!;
 
       const t = getGraphTheme();
       const r = Math.max(14, style?.size ?? 18);
@@ -355,6 +353,8 @@ function renderNode({
       //   }
       // }
 
+      // @ts-expect-error bad library
+      const node: vis.Node = nodes.get(id)!;
       const physicsOff = node.physics === false;
       if (physicsOff) {
         drawPinIndicator(ctx, x, y, r, t.node_anchor);
