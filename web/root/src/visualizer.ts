@@ -6,6 +6,106 @@ import * as vis from "npm:vis-network/standalone";
 export const nodes = new vis.DataSet<vis.Node>();
 export const edges = new vis.DataSet<vis.Edge>();
 
+
+type Color = string;
+type GraphTheme = {
+  bg_0: Color;
+  bg_1: Color;
+  bg_2: Color;
+  fg_0: Color;
+  fg_1: Color;
+  fg_2: Color;
+
+  node_anchor: Color;
+  node_border: Color;
+  current_node_border: Color;
+
+  edge: Color;
+  edge_hover: Color;
+  edge_active: Color;
+
+  edge_font_size: number,
+  node_font_size: number,
+};
+
+let _graphTheme: GraphTheme | null = null;
+
+function invalidateGraphThemeCache() {
+  _graphTheme = null;
+}
+
+function getGraphTheme(): GraphTheme {
+  function cssVar(name: string, fallback = ""): string {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim() || fallback;
+  }
+
+  if (_graphTheme) return _graphTheme;
+
+  _graphTheme = {
+    bg_0: cssVar("--graph-bg-0"),
+    bg_1: cssVar("--graph-bg-1"),
+    bg_2: cssVar("--graph-bg-2"),
+    fg_0: cssVar("--graph-fg-0"),
+    fg_1: cssVar("--graph-fg-1"),
+    fg_2: cssVar("--graph-fg-2"),
+
+    node_anchor: cssVar("--graph-node-anchor"),
+    node_border: cssVar("--graph-node-border"),
+    current_node_border: cssVar("--graph-current-node-border"),
+    
+    edge: cssVar("--graph-edge"),
+    edge_hover: cssVar("--graph-edge-hover"),
+    edge_active: cssVar("--graph-edge-active"),
+    
+    edge_font_size: Number(cssVar("--graph-edge-font-size")),
+    node_font_size: Number(cssVar("--graph-node-font-size")),
+  };
+
+  return _graphTheme;
+}
+
+export function updateGraphTheme() {
+  invalidateGraphThemeCache();
+  const gt = getGraphTheme();
+
+  network.setOptions({
+    nodes: {
+      font: {
+        color: gt.fg_0,
+        bold: {
+          color: gt.fg_1,
+          mod: ''
+        },
+      },
+    },
+    edges: {
+      labelHighlightBold: true,
+      font: { 
+        align: "top", 
+        size: gt.edge_font_size,
+        color: gt.fg_0,
+        strokeColor: gt.bg_0,
+        bold: {
+          color: gt.fg_1,
+          size: gt.edge_font_size,
+          mod: ''
+        },
+      },
+      color: {
+        color: gt.edge,
+        hover: gt.edge_hover,
+        highlight: gt.edge_active,
+      },
+      shadow: {
+        enabled: false,
+      }
+    },
+  });
+}
+
+
 type StateId = string;
 type GraphDef = {
   initial: StateId;
@@ -163,58 +263,6 @@ function createGraph(): vis.Network {
   return network;
 }
 
-export type GraphTheme = {
-  bg_0: string;
-  bg_1: string;
-  bg_2: string;
-  fg_0: string;
-
-  anchor: string;
-  selected: string;
-  node: string;
-  current: string;
-  edge: string;
-  glow: string;
-  edge_font_size: number,
-};
-
-let _graphTheme: GraphTheme | null = null;
-
-export function invalidateGraphThemeCache() {
-  _graphTheme = null;
-}
-
-export function getGraphTheme(): GraphTheme {
-  function cssVar(name: string, fallback = ""): string {
-    return getComputedStyle(document.documentElement)
-      .getPropertyValue(name)
-      .trim() || fallback;
-  }
-
-  if (_graphTheme) return _graphTheme;
-
-  _graphTheme = {
-    bg_0: cssVar("--bg-0"),
-    bg_1: cssVar("--bg-1"),
-    bg_2: cssVar("--bg-2"),
-    fg_0: cssVar("--fg-0"),
-
-    selected: cssVar("--bg-2"),
-
-    node: cssVar("--focus"),
-    current: cssVar("--success"),
-
-    anchor: cssVar("--warning"),
-
-    edge: cssVar("--graph-edge", "rgba(201,209,217,0.55)"),
-
-    glow: cssVar("--accent", "#79c0ff"),
-    edge_font_size: 10,
-  };
-
-  return _graphTheme;
-}
-
 function renderNode({
   ctx,
   id,
@@ -236,8 +284,8 @@ function renderNode({
       const isFinal = id === "q1"; // <-- change if your schema differs
       const isActive = id === "q0"; // <-- change if your schema differs
 
-      const fill = selected ? t.glow : hover ? t.bg_1 : t.bg_0;
-      const stroke = isActive ? t.current : t.node;
+      const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
+      const stroke = isActive ? t.current_node_border : t.node_border;
 
       const emphasis = (selected ? 1 : 0) + (hover ? 0.6 : 0);
 
@@ -306,7 +354,7 @@ function renderNode({
 
       const physicsOff = node.physics === false;
       if (physicsOff) {
-        drawPinIndicator(ctx, x, y, r, t.anchor);
+        drawPinIndicator(ctx, x, y, r, t.node_anchor);
       }
 
       ctx.restore();

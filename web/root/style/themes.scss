@@ -29,6 +29,25 @@
   --dur-med: 160ms;
   --dur-slow: 240ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+
+  --graph-bg-0: var(--bg-0);
+  --graph-bg-1: var(--bg-1);
+  --graph-bg-2: var(--bg-2);
+  --graph-fg-0: var(--fg-0);
+  --graph-fg-1: var(--fg-1);
+  --graph-fg-2: var(--fg-2);
+
+  --graph-node-font-size: 14;
+  --graph-edge-font-size: 10;
+
+  --graph-node-border: var(--focus);
+  --graph-current-node-border: var(--success);
+  --graph-node-anchor: var(--warning);
+
+  --graph-edge: var(--fg-muted);
+  --graph-edge-hover: var(--accent);
+  --graph-edge-active: var(--focus);
 }
 
 :root[data-theme="dark"] {
@@ -51,20 +70,6 @@
   --success: #2ea043;
   --warning: #f2cc60;
   --error: #f85149;
-
-  --graph-bg: var(--bg-0);
-
-  --graph-node-bg: #1f6feb;
-  --graph-node-border: #388bfd;
-  --graph-node-text: var(--fg-0);
-
-  --graph-node-active-bg: #79c0ff;
-  --graph-node-active-border: #ff0000;
-
-  --graph-edge: rgba(201, 209, 217, 0.55);
-  --graph-edge-hover: rgba(201, 209, 217, 0.864);
-  --graph-edge-active: var(--accent);
-
 
   --ansi-fg-30: #0b0f14;   /* black */
   --ansi-fg-31: #ff7b72;   /* red */
@@ -114,21 +119,6 @@
   --success: #1a7f37;
   --warning: #9a6700;
   --error: #cf222e;
-
-  --graph-bg: var(--bg-0);
-
-  --graph-node-bg: #1f6feb;
-  --graph-node-border: #0969da;
-  --graph-node-text: #ffffff;
-
-  --graph-node-active-bg: #54aeff;
-  --graph-node-active-border: #0969da;
-
-  --graph-edge: rgba(31, 41, 55, 0.45);
-  --graph-edge-hover: #0969da;
-  --graph-edge-active: #54aeff;
-
-
 
   --ansi-fg-30: #111827;   /* black */
   --ansi-fg-31: #b42318;   /* red */

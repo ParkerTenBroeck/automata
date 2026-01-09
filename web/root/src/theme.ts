@@ -1,10 +1,4 @@
-import { getGraphTheme, invalidateGraphThemeCache, network } from "./visualizer.ts";
-
-function cssVar(name: string, fallback = ""): string {
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim() || fallback;
-}
+import { updateGraphTheme } from "./visualizer.ts";
 
 const themeBtn = document.getElementById("themeToggle") as HTMLButtonElement;
 
@@ -28,66 +22,25 @@ function setTheme(theme: Theme) {
 
   // update button label
   themeBtn.textContent = theme === "dark" ? "🌙 Dark" : "☀️ Light";
-  applyGraphTheme();
+  updateGraphTheme();
 }
 
+
+setTheme(getPreferredTheme());
+
+themeBtn.addEventListener("click", toggleTheme);
 function toggleTheme() {
   const current = (document.documentElement.dataset.theme as Theme) || "dark";
   setTheme(current === "dark" ? "light" : "dark");
 }
 
-// init
-setTheme(getPreferredTheme());
 
-// click handler
-themeBtn.addEventListener("click", toggleTheme);
 
-// optional: respond to OS theme changes (only if user hasn't chosen a theme)
 globalThis.window.matchMedia?.("(prefers-color-scheme: light)")
   ?.addEventListener("change", () => {
-    if (localStorage.getItem("theme")) return; // user has chosen, don't override
+    if (localStorage.getItem("theme")) return;
     setTheme(getPreferredTheme());
   });
-
-function applyGraphTheme() {
-  invalidateGraphThemeCache();
-
-  network.setOptions({
-    nodes: {
-      font: {
-        color: cssVar("--graph-node-text"),
-        bold: {
-          color: cssVar("--fg-1"),
-          mod: ''
-        },
-      },
-    },
-    edges: {
-      labelHighlightBold: true,
-      font: { 
-        align: "top", 
-        size: getGraphTheme().edge_font_size,
-        color: cssVar("--fg-0"),
-        strokeColor: cssVar("--bg-0"),
-        bold: {
-          color: cssVar("--fg-1"),
-          size: getGraphTheme().edge_font_size,
-          mod: ''
-        },
-      },
-      color: {
-        color: cssVar("--graph-edge"),
-        highlight: cssVar("--graph-edge-active"),
-        hover: cssVar("--graph-edge-hover"),
-      },
-      shadow: {
-        enabled: true,
-        color: cssVar("--bg-2")
-      }
-    },
-  });
-}
-
 
 
 
