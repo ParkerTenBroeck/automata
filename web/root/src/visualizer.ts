@@ -2,6 +2,7 @@
 
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
+import { StateEffect } from "npm:@codemirror/state";
 
 export const nodes = new vis.DataSet<vis.Node>();
 export const edges = new vis.DataSet<vis.Edge>();
@@ -109,29 +110,31 @@ export function updateGraphTheme() {
 type StateId = string;
 type GraphDef = {
   initial: StateId;
-  final: StateId[];
-  states: StateId[];
+  final_states: Set<StateId>;
+  states: Set<StateId>;
   transitions: Record<string, string>;
 };
 
 let automaton: GraphDef = {
   initial: "",
-  final: [],
-  states: [],
+  final_states: new Set(),
+  states: new Set(),
   transitions: {},
 };
 
 export function clearAutomaton() {
   setAutomaton({
     initial: "",
-    final: [],
-    states: [],
+    final_states: new Set(),
+    states: new Set(),
     transitions: {},
   });
 }
 
 export function setAutomaton(auto: GraphDef) {
   automaton = auto;
+  automaton.final_states = new Set(automaton.final_states)
+  automaton.states = new Set(automaton.states)
   // Populate nodes
   for (const state of automaton.states) {
     if (nodes.get(state)) {
@@ -179,7 +182,7 @@ export function setAutomaton(auto: GraphDef) {
   }
 
   for (const node_id of nodes.getIds()){
-    if (!auto.states.includes(node_id as string)){
+    if (!auto.states.has(node_id as string)){
       nodes.remove(node_id)
     }
   }
@@ -280,9 +283,9 @@ function renderNode({
       const t = getGraphTheme();
       const r = Math.max(14, style?.size ?? 18);
 
-      const isInitial = id === "q0";
-      const isFinal = id === "q1"; // <-- change if your schema differs
-      const isActive = id === "q0"; // <-- change if your schema differs
+      const isInitial = automaton.initial === id;
+      const isFinal = automaton.final_states.has(id);
+      const isActive = false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
       const stroke = isActive ? t.current_node_border : t.node_border;
