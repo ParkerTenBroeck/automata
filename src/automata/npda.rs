@@ -479,6 +479,7 @@ impl Npda {
                 a
             },
         ));
+
         let final_states = final_states.map(|f| {
             StateMap(f.iter().fold(vec![false; states.len()], |mut a, k| {
                 a[k.0 as usize] = true;
