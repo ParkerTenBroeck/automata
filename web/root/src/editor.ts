@@ -21,6 +21,7 @@ import wasm from "./wasm.ts"
 import { terminalPlugin } from "./terminal.ts";
 
 import { setAutomaton } from "./visualizer.ts";
+import { machine_from_json } from "./automata.ts";
 
 
 function tokenize(text: string) {
@@ -78,7 +79,11 @@ function buildAnalysis(text: string, doc: Text) {
   const { log, log_formatted, graph } = compile(text);
 
   if (graph){
-    setAutomaton(JSON.parse(graph))
+    try{
+      setAutomaton(machine_from_json(graph))
+    }catch(e){
+      console.log(e);
+    }
   }
 
   // Build ONE Decoration set: syntax + diagnostics

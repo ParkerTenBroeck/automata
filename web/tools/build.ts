@@ -29,7 +29,7 @@ const result = sass.compile(String(new URL("style/style.scss", ROOT).pathname), 
 await Deno.writeTextFile(new URL("style.css", DIST), result.css);
 
 console.log("Compiling wasm lib...");
-await run(["wasm-pack", "build", "--target", "web", "--release", "--out-dir", "wasm"], "");
+await run(["wasm-pack", "build", "--target", "web", "--release", "--out-dir", "../web/wasm"], "../web_lib");
 await Deno.copyFile(new URL("automata_web_bg.wasm", WASM), new URL("automata_web_bg.wasm", DIST));
 
 console.log("Compiling bundle...");

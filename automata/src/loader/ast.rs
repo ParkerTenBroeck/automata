@@ -51,7 +51,10 @@ pub struct ProductionGroup<'a>(pub Vec<Spanned<Symbol<'a>>>);
 #[derive(Clone, Debug)]
 pub enum TopLevel<'a> {
     Item(Spanned<&'a str>, Spanned<Item<'a>>),
-    TransitionFunc(Spanned<(Spanned<&'a str>, Spanned<Tuple<'a>>)>, Spanned<Item<'a>>),
+    TransitionFunc(
+        Spanned<(Spanned<&'a str>, Spanned<Tuple<'a>>)>,
+        Spanned<Item<'a>>,
+    ),
     ProductionRule(
         Spanned<ProductionGroup<'a>>,
         Spanned<Vec<Spanned<ProductionGroup<'a>>>>,
@@ -62,12 +65,19 @@ pub enum TopLevel<'a> {
 use crate::loader::Context;
 
 impl<'a> Spanned<Item<'a>> {
+    pub fn expect_symbol(&self, ctx: &mut Context<'a>) -> Option<Symbol<'a>> {
+        match &self.0 {
+            Item::Symbol(sym) => return Some(*sym),
+            Item::Tuple(_) => ctx.emit_error("expected ident found tuple", self.1),
+            Item::List(_) => ctx.emit_error("expected ident found list", self.1),
+        }
+        None
+    }
+
     pub fn expect_ident(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(ident)) => return Some(ident),
-            Item::Symbol(Symbol::Epsilon) => {
-                ctx.emit_error("expected ident found epsilon", self.1)
-            }
+            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected ident found epsilon", self.1),
             Item::Tuple(_) => ctx.emit_error("expected ident found tuple", self.1),
             Item::List(_) => ctx.emit_error("expected ident found list", self.1),
         }
@@ -111,71 +121,10 @@ impl<'a> Spanned<Item<'a>> {
     pub fn expect_tuple(&self, ctx: &mut Context<'a>) -> Option<Spanned<&Tuple<'a>>> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected tuple found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => {
-                ctx.emit_error("expected tuple found epsilon", self.1)
-            }
+            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected tuple found epsilon", self.1),
             Item::Tuple(tuple) => return Some(Spanned(tuple, self.1)),
             Item::List(_) => ctx.emit_error("expected tuple found list", self.1),
         }
         None
-    }
-}
-
-impl<'a, 'b> Spanned<&'b Tuple<'a>> {
-    pub fn expect_dfa_transition(&self, _: &mut Context<'a>) -> ! {
-        todo!()
-    }
-    pub fn expect_nfa_transition(&self, _: &mut Context<'a>) -> ! {
-        todo!()
-    }
-
-    pub fn expect_dpda_transition(&self, _: &mut Context<'a>) -> ! {
-        todo!()
-    }
-
-    pub fn expect_npda_transition_function(
-        &self,
-        ctx: &mut Context<'a>,
-    ) -> Option<(Spanned<&'a str>, Spanned<Symbol<'a>>, Spanned<&'a str>)> {
-        match &self.0.0[..] {
-            [
-                Spanned(Item::Symbol(Symbol::Ident(state)), state_span),
-                Spanned(Item::Symbol(letter), letter_span),
-                Spanned(Item::Symbol(Symbol::Ident(symbol)), symbol_span),
-            ] => {
-                return Some((
-                    Spanned(state, *state_span),
-                    Spanned(*letter, *letter_span),
-                    Spanned(symbol, *symbol_span),
-                ));
-            }
-            _ => ctx.emit_error(
-                "expected NPDA transition function (ident, ident|~, ident)",
-                self.1,
-            ),
-        }
-        None
-    }
-    pub fn expect_npda_transition(
-        &self,
-        ctx: &mut Context<'a>,
-    ) -> Option<(Spanned<&'a str>, &'b [Spanned<Item<'a>>])> {
-        match &self.0.0[..] {
-            [
-                Spanned(Item::Symbol(Symbol::Ident(state)), state_span),
-                list,
-            ] => {
-                return Some((Spanned(state, *state_span), list.list_weak()));
-            }
-            _ => ctx.emit_error("expected NPDA transition (ident, item|[item])", self.1),
-        }
-        None
-    }
-
-    pub fn expect_tm_transition(&self, _: &Context<'a>) -> ! {
-        todo!()
-    }
-    pub fn expect_ntm_transition(&self, _: &Context<'a>) -> ! {
-        todo!()
     }
 }

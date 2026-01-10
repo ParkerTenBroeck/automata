@@ -69,10 +69,7 @@ pub enum Error {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        Self {
-            input,
-            position: 0,
-        }
+        Self { input, position: 0 }
     }
 
     fn consume(&mut self) -> Option<char> {
@@ -92,7 +89,6 @@ impl<'a> Lexer<'a> {
             self.position -= previous.len_utf8();
         }
     }
-
 }
 
 fn begin_ident(c: char) -> bool {
@@ -110,12 +106,12 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
         while let Some(c) = self.peek()
             && c.is_whitespace()
         {
-             if c == '\n'{
+            if c == '\n' {
                 let start = self.position;
                 self.consume();
                 let res = Some(Spanned(Ok(Token::LineEnd), Span(start, self.position)));
                 return res;
-            }else{
+            } else {
                 self.consume();
             }
         }
@@ -151,7 +147,7 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
 
             '/' => match self.consume() {
                 Some('/') => loop {
-                    match self.consume(){
+                    match self.consume() {
                         Some('\n') => {
                             self.backtrack();
                             break Ok(Token::Comment(&self.input[start + 2..=self.position]));
@@ -166,9 +162,7 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                     match self.consume() {
                         Some('*') if self.peek() == Some('/') => {
                             self.consume();
-                            break Ok(Token::Comment(
-                                &self.input[start + 2..self.position - 2],
-                            ));
+                            break Ok(Token::Comment(&self.input[start + 2..self.position - 2]));
                         }
                         Some(_) => {}
                         None => break Err(Error::UnclosedMultiLine),
