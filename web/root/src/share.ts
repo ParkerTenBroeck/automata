@@ -4,7 +4,7 @@ const btn = document.getElementById("shareBtn")!;
 const toast = document.getElementById("shareToast")!;
 
 function generateShareLink() {
-  return `${globalThis.window.location.href}?share=${encodeURIComponent(getText())}`;
+  return `${globalThis.window.location.href}?share=${encodeURIComponent(btoa(getText()))}`;
 }
 
 async function copy(text: string) {
@@ -22,8 +22,9 @@ btn.addEventListener("click", async () => {
 
 export function sharedText(): string|null {
   const url = new URL(globalThis.window.location.href);
-  const text: string | null = url.searchParams.get("share");
+  let text: string | null = url.searchParams.get("share");
   if (text !== null) {
+    text = atob(text);
     url.searchParams.delete("share");
     globalThis.window.history.replaceState(
       {},
