@@ -4,6 +4,7 @@
 import * as vis from "npm:vis-network/standalone";
 import { StateEffect } from "npm:@codemirror/state";
 import { Machine } from "./automata.ts";
+import { getText } from "./editor.ts";
 
 export const nodes = new vis.DataSet<vis.Node>();
 export const edges = new vis.DataSet<vis.Edge>();
@@ -25,8 +26,15 @@ type GraphTheme = {
   edge_hover: Color;
   edge_active: Color;
 
-  edge_font_size: number;
+  font_face: string
+
   node_font_size: number;
+  node_font: string,
+  node_font_bold: string,
+
+  edge_font_size: number;
+  edge_font: string,
+  edge_font_bold: string,
 };
 
 let _graphTheme: GraphTheme | null = null;
@@ -60,8 +68,15 @@ function getGraphTheme(): GraphTheme {
     edge_hover: cssVar("--graph-edge-hover"),
     edge_active: cssVar("--graph-edge-active"),
 
-    edge_font_size: Number(cssVar("--graph-edge-font-size")),
+    font_face: cssVar("--graph-font"),
+
     node_font_size: Number(cssVar("--graph-node-font-size")),
+    node_font: `${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
+    node_font_bold: `bold ${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
+
+    edge_font_size: Number(cssVar("--graph-edge-font-size")),
+    edge_font: `${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
+    edge_font_bold: `bold ${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
   };
 
   return _graphTheme;
@@ -78,7 +93,6 @@ export function updateGraphTheme() {
         color: gt.fg_0,
         bold: {
           color: gt.fg_1,
-          // mod: "",
         },
       },
     },
@@ -86,13 +100,13 @@ export function updateGraphTheme() {
       labelHighlightBold: true,
       font: {
         align: "top",
-        face: 'arial',
+        face: gt.font_face,
         size: gt.edge_font_size,
         color: gt.fg_0,
         strokeColor: gt.bg_0,
         bold: {
           color: gt.fg_1,
-          face: 'arial',
+          face: gt.font_face,
           size: gt.edge_font_size,
           mod: "bold",
         },
@@ -107,6 +121,8 @@ export function updateGraphTheme() {
       },
     },
   });
+
+  setAutomaton(automaton)
 }
 
 let automaton: Machine = {
@@ -133,21 +149,38 @@ export function clearAutomaton() {
   };
 }
 
+
+let _measureCanvas: HTMLCanvasElement | null = null;
+
+export function measureTextWidth(text: string, font: string): number {
+  if (!_measureCanvas) {
+    _measureCanvas = document.createElement("canvas");
+  }
+
+  const ctx = _measureCanvas.getContext("2d")!;
+  ctx.font = font;
+
+  return ctx.measureText(text).width;
+}
+
 export function setAutomaton(auto: Machine) {
-  console.log(auto);
   automaton = auto;
 
   // Populate nodes
   for (const state of automaton.states.keys()) {
+    
+    const size = measureTextWidth(state, getGraphTheme().node_font)/2+10
     if (nodes.get(state)) {
       nodes.update({
         id: state,
         label: state,
+        size
       });
     } else {
       nodes.add({
         id: state,
         label: state,
+        size
       });
     }
   }
@@ -303,7 +336,7 @@ function renderNode({
 
       ctx.save();
 
-      ctx.font = hover||selected?'bold 14px arial':'14px arial';
+      ctx.font = hover||selected?t.node_font_bold:t.node_font;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
