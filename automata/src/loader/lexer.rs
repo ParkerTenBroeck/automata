@@ -92,7 +92,7 @@ impl<'a> Lexer<'a> {
 }
 
 fn begin_ident(c: char) -> bool {
-    c.is_alphabetic() || c == '_' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
+    c.is_alphanumeric() || c == '_' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
 }
 
 fn continue_ident(c: char) -> bool {

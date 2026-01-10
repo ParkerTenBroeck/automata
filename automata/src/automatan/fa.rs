@@ -111,7 +111,7 @@ impl<'a> Fa<'a> {
                     }
                 }
                 TL::Item(S("F", _), list) => {
-                    if final_states.is_empty() {
+                    if !final_states.is_empty() {
                         ctx.emit_error("final states already set", span);
                     }
                     let Some(list) = list.expect_set(ctx) else {
@@ -124,7 +124,7 @@ impl<'a> Fa<'a> {
                         if states.contains_key(&State(ident)) {
                             if final_states
                                 .insert(State(ident), StateInfo { definition: item.1 })
-                                .is_none()
+                                .is_some()
                             {
                                 ctx.emit_error("final state redefined", item.1);
                             }
