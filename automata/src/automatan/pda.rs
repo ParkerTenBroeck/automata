@@ -132,7 +132,7 @@ impl<'a> Pda<'a> {
                         if states.contains_key(&State(ident)) {
                             if map
                                 .insert(State(ident), StateInfo { definition: item.1 })
-                                .is_none()
+                                .is_some()
                             {
                                 ctx.emit_error("final state redefined", item.1);
                             }
