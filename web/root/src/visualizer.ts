@@ -160,7 +160,7 @@ export function setAutomaton(auto: Machine) {
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join("\n"),
+        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
       });
     } else {
       edges.add({
@@ -168,7 +168,7 @@ export function setAutomaton(auto: Machine) {
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join("\n"),
+        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
       });
     }
   }
