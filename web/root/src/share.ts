@@ -21,16 +21,21 @@ btn.addEventListener("click", async () => {
 
 
 export function sharedText(): string|null {
-  const url = new URL(globalThis.window.location.href);
-  let text: string | null = url.searchParams.get("share");
-  if (text !== null) {
-    text = atob(text);
-    url.searchParams.delete("share");
-    globalThis.window.history.replaceState(
-      {},
-      document.title,
-      url.pathname + url.search + url.hash
-    );
+  try{
+    const url = new URL(globalThis.window.location.href);
+    let text: string | null = url.searchParams.get("share");
+    if (text !== null) {
+      text = atob(text);
+      url.searchParams.delete("share");
+      globalThis.window.history.replaceState(
+        {},
+        document.title,
+        url.pathname + url.search + url.hash
+      );
+    }
+    return text;
+  }catch(e){
+    console.log(e)
   }
-  return text;
+  return null;
 }
