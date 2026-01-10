@@ -125,7 +125,7 @@ impl<'a> Display for LogEntryDisplay<'a> {
             let line_start = self.src.get(..=span.0).unwrap_or("").lines().count();
             let line_end = self.src.get(..span.1).unwrap_or("").lines().count();
 
-            let padding = line_end.ilog10() as usize;
+            let padding = if line_end == 0 {1} else {line_end.ilog10() as usize};
 
             let start = self
                 .src
