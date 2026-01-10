@@ -8,7 +8,7 @@
 
     <link rel="icon" type="image/x-icon" href="icon.jpg">
     <link href="style.css" rel="stylesheet">
-<script src="./index-AQEQHDHP.js" type="module" crossorigin></script></head>
+<script src="./index-G7WGUTLC.js" type="module" crossorigin></script></head>
 
 <body>
     <div class="centered" id="center_text">
@@ -28,10 +28,24 @@
 
             <div class="vSplit" style="--split-default: 20%" title="Drag to resize canvas width"></div>
 
-            <section>
-                <button id="themeToggle" class="btn btn-grey" title="Toggle light/dark">
-                    🌙 Dark
-                </button>
+            <section class="flexCol gap marginTop">
+                <div class="flexCenter sidePadding gap">
+                    <button id="themeToggle" class="btn btn-grey" title="Toggle light/dark">
+                        🌙 Dark
+                    </button>
+                    <button class="btn btm-grey" style="position: relative" id="shareBtn" type="button">
+                        Share
+                        <span class="share-toast" id="shareToast">
+                            Copied to clipboard
+                        </span>
+                    </button>
+                </div>
+                <div class="flexCenter sidePadding">
+                    <select id="exampleSelect" class="ex-select">
+                        <option value="" selected disabled>Choose an example…</option>
+                    </select>
+                </div>
+                <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>
             </section>
         </section>
 
