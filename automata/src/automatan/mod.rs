@@ -6,6 +6,7 @@ pub mod fa;
 pub mod pda;
 pub mod tm;
 
+
 #[derive(Clone, Copy, Debug)]
 pub struct Options {
     pub non_deterministic: bool,

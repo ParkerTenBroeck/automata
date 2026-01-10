@@ -3,10 +3,10 @@
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
 import { StateEffect } from "npm:@codemirror/state";
+import { Machine } from "./automata.ts";
 
 export const nodes = new vis.DataSet<vis.Node>();
 export const edges = new vis.DataSet<vis.Edge>();
-
 
 type Color = string;
 type GraphTheme = {
@@ -25,8 +25,8 @@ type GraphTheme = {
   edge_hover: Color;
   edge_active: Color;
 
-  edge_font_size: number,
-  node_font_size: number,
+  edge_font_size: number;
+  node_font_size: number;
 };
 
 let _graphTheme: GraphTheme | null = null;
@@ -55,11 +55,11 @@ function getGraphTheme(): GraphTheme {
     node_anchor: cssVar("--graph-node-anchor"),
     node_border: cssVar("--graph-node-border"),
     current_node_border: cssVar("--graph-current-node-border"),
-    
+
     edge: cssVar("--graph-edge"),
     edge_hover: cssVar("--graph-edge-hover"),
     edge_active: cssVar("--graph-edge-active"),
-    
+
     edge_font_size: Number(cssVar("--graph-edge-font-size")),
     node_font_size: Number(cssVar("--graph-node-font-size")),
   };
@@ -77,21 +77,21 @@ export function updateGraphTheme() {
         color: gt.fg_0,
         bold: {
           color: gt.fg_1,
-          mod: ''
+          mod: "",
         },
       },
     },
     edges: {
       labelHighlightBold: true,
-      font: { 
-        align: "top", 
+      font: {
+        align: "top",
         size: gt.edge_font_size,
         color: gt.fg_0,
         strokeColor: gt.bg_0,
         bold: {
           color: gt.fg_1,
           size: gt.edge_font_size,
-          mod: ''
+          mod: "",
         },
       },
       color: {
@@ -101,43 +101,39 @@ export function updateGraphTheme() {
       },
       shadow: {
         enabled: false,
-      }
+      },
     },
   });
 }
 
-
-type StateId = string;
-type GraphDef = {
-  initial: StateId;
-  final_states: Set<StateId>;
-  states: Set<StateId>;
-  transitions: Record<string, string>;
-};
-
-let automaton: GraphDef = {
-  initial: "",
-  final_states: new Set(),
-  states: new Set(),
-  transitions: {},
+let automaton: Machine = {
+  type: "fa",
+  alphabet: new Map(),
+  final_states: new Map(),
+  initial_state: "",
+  states: new Map(),
+  transitions: new Map(),
+  edges: new Map(),
 };
 
 export function clearAutomaton() {
-  setAutomaton({
-    initial: "",
-    final_states: new Set(),
-    states: new Set(),
-    transitions: {},
-  });
+  automaton = {
+    type: "fa",
+    alphabet: new Map(),
+    final_states: new Map(),
+    initial_state: "",
+    states: new Map(),
+    transitions: new Map(),
+    edges: new Map(),
+  };
 }
 
-export function setAutomaton(auto: GraphDef) {
+export function setAutomaton(auto: Machine) {
   console.log(auto);
   automaton = auto;
-  automaton.final_states = new Set(automaton.final_states)
-  automaton.states = new Set(automaton.states)
+
   // Populate nodes
-  for (const state of automaton.states) {
+  for (const state of automaton.states.keys()) {
     if (nodes.get(state)) {
       nodes.update({
         id: state,
@@ -151,40 +147,41 @@ export function setAutomaton(auto: GraphDef) {
     }
   }
 
-  // Populate edges
-  for (const [k, v] of Object.entries(automaton.transitions)) {
-    const to_from = k.split("#");
+  // // Populate edges
+  for (const [edge_id, transitions] of auto.edges) {
+    const to_from = edge_id.split("#");
     const font = {
-      vadjust: -getGraphTheme().edge_font_size*Math.floor(((v.match(/\n/g) || '').length + 1)/2)
-    };
-    if (edges.get(k)) {
+      vadjust: -getGraphTheme().edge_font_size *
+        Math.floor(transitions.length / 2),
+    };    
+    if (edges.get(edge_id)) {
       edges.update({
-        id: k,
+        id: edge_id,
         font,
         from: to_from[0],
         to: to_from[1],
-        label: v,
+        label: transitions.map(i => i.repr).join("\n"),
       });
     } else {
       edges.add({
-        id: k,
+        id: edge_id,
         font,
         from: to_from[0],
         to: to_from[1],
-        label: v,
+        label: transitions.map(i => i.repr).join("\n"),
       });
     }
   }
 
-  for (const edge_id of edges.getIds()){
-    if (auto.transitions[edge_id as string] === undefined){
-      edges.remove(edge_id)
+  for (const edge_id of edges.getIds()) {
+    if (!auto.edges.has(edge_id as string)) {
+      edges.remove(edge_id);
     }
   }
 
-  for (const node_id of nodes.getIds()){
-    if (!auto.states.has(node_id as string)){
-      nodes.remove(node_id)
+  for (const node_id of nodes.getIds()) {
+    if (!auto.states.has(node_id as string)) {
+      nodes.remove(node_id);
     }
   }
 }
@@ -278,12 +275,13 @@ function renderNode({
 }: any) {
   return {
     drawNode() {
-
       const t = getGraphTheme();
       const r = Math.max(14, style?.size ?? 18);
 
-      const isInitial = automaton.initial === id;
-      const isFinal = automaton.final_states.has(id);
+      const isInitial = automaton.initial_state === id;
+      const isFinal = automaton.final_states
+        ? automaton.final_states.has(id)
+        : false;
       const isActive = false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;

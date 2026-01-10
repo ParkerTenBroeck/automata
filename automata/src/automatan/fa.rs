@@ -25,8 +25,8 @@ pub struct TransitionTo<'a> {
 
 #[derive(Clone, Debug)]
 #[allow(unused)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", serde_with::serde_as)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Fa<'a> {
     pub initial_state: State<'a>,
     pub states: HashMap<State<'a>, StateInfo>,

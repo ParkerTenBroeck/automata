@@ -169,15 +169,7 @@ pub fn compile(input: &str) -> CompileResult {
     let mut ctx = Context::new(input);
     let result = automata::loader::parse_universal(&mut ctx);
 
-    let graph = if let Some(result) = result {
-        Some(match result {
-            loader::Machine::Fa(fa) => serde_json::to_string(&fa).unwrap(),
-            loader::Machine::Pda(pda) => serde_json::to_string(&pda).unwrap(),
-            loader::Machine::Tm(tm) => serde_json::to_string(&tm).unwrap(),
-        })
-    } else {
-        None
-    };
+    let graph = result.map(|result| serde_json::to_string(&result).unwrap());
 
     use std::fmt::Write;
     let log_formatted = ctx.logs_display().fold(String::new(), |mut s, e| {

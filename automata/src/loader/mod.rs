@@ -94,6 +94,9 @@ impl<'a> Context<'a> {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(tag = "type"))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Machine<'a> {
     Fa(fa::Fa<'a>),
     Pda(pda::Pda<'a>),
