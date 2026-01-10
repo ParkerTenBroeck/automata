@@ -42,6 +42,23 @@ body {
   flex-direction: row;
 }
 
+.flexCenter{
+  display: flex;
+  justify-content: center;
+}
+
+.gap {
+  gap: 1em
+}
+
+.marginTop {
+  margin-top: 1em;
+}
+
+.sidePadding {
+  padding: 0px 1em;
+}
+
 .hSplit {
     :not( .styleOnly){
         cursor: col-resize;
@@ -71,4 +88,57 @@ body {
 .hSplit:hover:not(.styleOnly),
 .vSplit:hover:not(.styleOnly) {
   background: var(--separator-hover);
+}
+
+
+.ex-label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ex-select {
+  width: 320px;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(bg-1);
+  background: var(--bg-2);
+}
+
+.share-toast {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  transform: translateX(-50%);
+
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+
+  opacity: 0;
+}
+
+.share-toast.show {
+  animation: toastFade 1.4s ease forwards;
+}
+
+@keyframes toastFade {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }

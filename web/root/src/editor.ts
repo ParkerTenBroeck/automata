@@ -22,6 +22,8 @@ import { terminalPlugin } from "./terminal.ts";
 
 import { setAutomaton } from "./visualizer.ts";
 import { machine_from_json } from "./automata.ts";
+import { sharedText } from "./share.ts";
+import { examples } from "./examples.ts";
 
 
 function tokenize(text: string) {
@@ -43,38 +45,21 @@ function compile(text: string): wasm.CompileResult {
   }
 }
 
-const tokenClass = (t: string) =>
-({
-  comment: "tok-comment",
-  keyword: "tok-keyword",
-  error: "tok-error",
-  ident: "tok-ident",
-  punc: "tok-punc",
-  string: "tok-string",
-  lpar: "rb-",
-  lbrace: "rb-",
-  lbracket: "rb-",
-
-  rpar: "rb-",
-  rbrace: "rb-",
-  rbracket: "rb-",
-}[t] || "tok-ident");
-
-
-function severityClass(sev: string) {
-  const s = (sev || "error").toLowerCase();
-  if (s === "warning") return "cm-diag-warning";
-  if (s === "info") return "cm-diag-info";
-  return "cm-diag-error";
-}
-function sevRank(sev: string) {
-  if (sev === "error") return 3;
-  if (sev === "warning") return 2;
-  return 1;
-}
-
+export const analysisField = StateField.define({
+  create(state) {
+    const text = state.doc.toString();
+    return buildAnalysis(text, state.doc);
+  },
+  update(value, tr) {
+    if (!tr.docChanged) return value;
+    const text = tr.state.doc.toString();
+    return buildAnalysis(text, tr.state.doc);
+  },
+  provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
+});
 
 function buildAnalysis(text: string, doc: Text) {
+  save(text);
   const tokens = tokenize(text);
   const { log, log_formatted, graph } = compile(text);
 
@@ -86,7 +71,6 @@ function buildAnalysis(text: string, doc: Text) {
     }
   }
 
-  // Build ONE Decoration set: syntax + diagnostics
   const marks = [];
   const docLen = doc.length;
 
@@ -120,18 +104,35 @@ function buildAnalysis(text: string, doc: Text) {
   return { tokens, log, log_formatted, deco };
 }
 
-export const analysisField = StateField.define({
-  create(state) {
-    const text = state.doc.toString();
-    return buildAnalysis(text, state.doc);
-  },
-  update(value, tr) {
-    if (!tr.docChanged) return value;
-    const text = tr.state.doc.toString();
-    return buildAnalysis(text, tr.state.doc);
-  },
-  provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
-});
+const tokenClass = (t: string) =>
+({
+  comment: "tok-comment",
+  keyword: "tok-keyword",
+  error: "tok-error",
+  ident: "tok-ident",
+  punc: "tok-punc",
+  string: "tok-string",
+  lpar: "rb-",
+  lbrace: "rb-",
+  lbracket: "rb-",
+
+  rpar: "rb-",
+  rbrace: "rb-",
+  rbracket: "rb-",
+}[t] || "tok-ident");
+
+
+function severityClass(sev: string) {
+  const s = (sev || "error").toLowerCase();
+  if (s === "warning") return "cm-diag-warning";
+  if (s === "info") return "cm-diag-info";
+  return "cm-diag-error";
+}
+function sevRank(sev: string) {
+  if (sev === "error") return 3;
+  if (sev === "warning") return 2;
+  return 1;
+}
 
 // ===================== Hover tooltip (uses cached diags) =====================
 const diagHover = hoverTooltip((view, pos) => {
@@ -169,32 +170,24 @@ const diagHover = hoverTooltip((view, pos) => {
   };
 });
 
+function save(text: string){
+  globalThis.localStorage.save = text;
+}
 
-const initialText = `type=NPDA
-Q = {q0, q1} // states
-E = {a, b} // alphabet
-T = {z0, A, B} // stack
-q0 = q0
-z0 = z0
+function getSaved(): string | undefined{
+  return globalThis.localStorage.save;
+}
 
-// construct all possible permutations of A's and B's
-d(q0, epsilon, z0)  =   { (q0, [A z0]), (q0, [B z0]) }
-d(q0, epsilon, A)   =   { (q0, [A A]),  (q0, [B A])  }
+export function setText(text: string){
+  editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text } });
+}
 
-d(q0, epsilon, B)   =   { (q0, [A B]),  (q0, [B B])  }
-
-// transition to q1
-d(q0, epsilon, z0)  =   { (q1, z0) }
-d(q0, epsilon, A)   =   { (q1, A)  }
-d(q0, epsilon, B)   =   { (q1, B)  }
-
-// consume stack until empty
-d(q1, a, A)         =   { (q1, epsilon) }
-d(q1, b, B)         =   { (q1, epsilon) }
-`;
+export function getText(): string{
+  return editor.state.doc.toString()
+}
 
 const state = EditorState.create({
-  doc: initialText,
+  doc: sharedText() ?? getSaved() ?? examples[0].machine,
   extensions: [
     lineNumbers(),
     highlightActiveLineGutter(),
