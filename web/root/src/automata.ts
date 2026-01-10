@@ -197,3 +197,12 @@ export type Tm = {
   edges: Map<string, Edge[]>;
 };
 
+
+export type FaState = {
+  state: State,
+  position: number
+}
+
+export class FaSim{
+
+}
