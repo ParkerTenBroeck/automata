@@ -132,6 +132,7 @@ export function clearAutomaton() {
 }
 
 export function setAutomaton(auto: GraphDef) {
+  console.log(auto);
   automaton = auto;
   automaton.final_states = new Set(automaton.final_states)
   automaton.states = new Set(automaton.states)

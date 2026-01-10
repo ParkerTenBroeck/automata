@@ -1,4 +1,4 @@
-use std::{fmt::Display};
+use std::fmt::Display;
 
 use crate::loader::Span;
 
@@ -64,11 +64,11 @@ impl Logs {
         });
     }
 
-    pub fn displayable_with<'a>(&'a self, src: &'a str) -> impl Iterator<Item = LogEntryDisplay<'a>> {
-        self.logs.iter().map(|entry| LogEntryDisplay {
-            src,
-            entry,
-        })
+    pub fn displayable_with<'a>(
+        &'a self,
+        src: &'a str,
+    ) -> impl Iterator<Item = LogEntryDisplay<'a>> {
+        self.logs.iter().map(|entry| LogEntryDisplay { src, entry })
     }
 
     pub fn entries(&self) -> &[LogEntry] {

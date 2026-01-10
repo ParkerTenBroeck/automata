@@ -1,4 +1,4 @@
-use crate::{automata::npda, loader::ast::TopLevel};
+use crate::{automatan::*, loader::ast::TopLevel};
 
 pub mod ast;
 pub mod lexer;
@@ -13,7 +13,11 @@ pub const GAMMA_UPPER: &str = "Γ";
 pub const GAMMA_LOWER: &str = "γ";
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-pub struct Span(pub usize, pub usize);
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct Span(
+    #[cfg_attr(feature = "serde", serde(rename = "start"))] pub usize,
+    #[cfg_attr(feature = "serde", serde(rename = "end"))] pub usize,
+);
 impl Span {
     pub fn join(&self, end: Span) -> Span {
         Span(self.0, end.1)
@@ -32,26 +36,28 @@ impl<T> Spanned<T> {
     }
 }
 
-
-pub struct Context<'a>{
+pub struct Context<'a> {
     logs: log::Logs,
-    src: &'a str
+    src: &'a str,
 }
 
-impl<'a> Context<'a>{
-    pub fn new(src: &'a str) -> Self{
-        Self { logs: log::Logs::new(), src }
+impl<'a> Context<'a> {
+    pub fn new(src: &'a str) -> Self {
+        Self {
+            logs: log::Logs::new(),
+            src,
+        }
     }
 
-    pub fn src(&self) -> &'a str{
+    pub fn src(&self) -> &'a str {
         self.src
     }
 
-    pub fn logs_display(&self) -> impl Iterator<Item = log::LogEntryDisplay<'_>>{
+    pub fn logs_display(&self) -> impl Iterator<Item = log::LogEntryDisplay<'_>> {
         self.logs.displayable_with(self.src)
     }
 
-    pub fn eof(&self) -> Span{
+    pub fn eof(&self) -> Span {
         Span(self.src.len(), self.src.len())
     }
 
@@ -78,42 +84,45 @@ impl<'a> Context<'a>{
     pub fn emit_info(&mut self, msg: impl Into<String>, span: Span) {
         self.logs.emit_info(msg, span);
     }
-    
+
     pub fn contains_errors(&self) -> bool {
         self.logs.contains_errors()
     }
 
-    pub fn into_logs(self) -> log::Logs{
+    pub fn into_logs(self) -> log::Logs {
         self.logs
     }
 }
 
-
-pub enum Machine{
-    Npda(npda::Npda)
+pub enum Machine<'a> {
+    Fa(fa::Fa<'a>),
+    Pda(pda::Pda<'a>),
+    Tm(tm::Tm<'a>),
 }
 
-pub fn parse_universal(ctx: &mut Context<'_>) -> Option<Machine> {
+pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
     let mut items = parser::Parser::new(ctx).collect::<Vec<_>>().into_iter();
-    if ctx.logs.contains_errors(){
+    if ctx.logs.contains_errors() {
         return None;
     }
 
     use Spanned as S;
 
     #[derive(Debug)]
-    enum Type{
+    enum Type {
         Dfa,
         Nfa,
         Dpda,
         Npda,
         Tm,
-        Ntm
+        Ntm,
     }
 
-    fn parse_type<'a>(item: Option<S<TopLevel<'a>>>, ctx: &mut Context<'a>) -> Option<Type>{
-        let (str, span) = match item{
-            Some(S(TopLevel::Item(S("type", _), item@S(_,span)), _)) => (item.expect_ident(ctx)?, span),
+    fn parse_type<'a>(item: Option<S<TopLevel<'a>>>, ctx: &mut Context<'a>) -> Option<Type> {
+        let (str, span) = match item {
+            Some(S(TopLevel::Item(S("type", _), item @ S(_, span)), _)) => {
+                (item.expect_ident(ctx)?, span)
+            }
             Some(S(_, span)) => {
                 ctx.emit_error("expected type=<type> as first item", span);
                 return None;
@@ -124,25 +133,39 @@ pub fn parse_universal(ctx: &mut Context<'_>) -> Option<Machine> {
             }
         };
 
-        Some(match str{
-            "dfa"|"DFA" => Type::Dfa,
-            "nfa"|"NFA" => Type::Nfa,
-            "dpda"|"DPDA" => Type::Dpda,
-            "npdaA"|"NPDA" => Type::Npda,
-            "tm"|"TM" => Type::Tm,
-            "ntm"|"NTM" => Type::Ntm,
+        Some(match str {
+            "dfa" | "DFA" => Type::Dfa,
+            "nfa" | "NFA" => Type::Nfa,
+            "dpda" | "DPDA" => Type::Dpda,
+            "npdaA" | "NPDA" => Type::Npda,
+            "tm" | "TM" => Type::Tm,
+            "ntm" | "NTM" => Type::Ntm,
             _ => {
-                ctx.emit_error("unknown type, expected 'DFA' | 'NFA' | 'DPDA' | 'NPDA' | 'TM' | 'NTM'", span);
+                ctx.emit_error(
+                    "unknown type, expected 'DFA' | 'NFA' | 'DPDA' | 'NPDA' | 'TM' | 'NTM'",
+                    span,
+                );
                 return None;
-            },
+            }
         })
     }
 
-    Some(match parse_type(items.next(), ctx)?{
-        Type::Npda => Machine::Npda(npda::Npda::load_from_ast(items, ctx)?),
-        ty => {
-            ctx.emit_error_locless(format!("currently unsupported type {ty:?}"));
-            return None;
-        }
+    const D: Options = Options {
+        non_deterministic: false,
+        epsilon_moves: false,
+    };
+
+    const N: Options = Options {
+        non_deterministic: true,
+        epsilon_moves: true,
+    };
+
+    Some(match parse_type(items.next(), ctx)? {
+        Type::Dfa => Machine::Fa(fa::Fa::parse(items, ctx, D)?),
+        Type::Nfa => Machine::Fa(fa::Fa::parse(items, ctx, N)?),
+        Type::Dpda => Machine::Pda(pda::Pda::parse(items, ctx, D)?),
+        Type::Npda => Machine::Pda(pda::Pda::parse(items, ctx, N)?),
+        Type::Tm => Machine::Tm(tm::Tm::parse(items, ctx, D)?),
+        Type::Ntm => Machine::Tm(tm::Tm::parse(items, ctx, N)?),
     })
 }

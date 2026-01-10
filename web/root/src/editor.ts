@@ -78,7 +78,11 @@ function buildAnalysis(text: string, doc: Text) {
   const { log, log_formatted, graph } = compile(text);
 
   if (graph){
-    setAutomaton(JSON.parse(graph))
+    try{
+      setAutomaton(JSON.parse(graph))
+    }catch(e){
+      console.log(e);
+    }
   }
 
   // Build ONE Decoration set: syntax + diagnostics

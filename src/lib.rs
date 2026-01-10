@@ -1,2 +1,2 @@
-pub mod automata;
+pub mod automatan;
 pub mod loader;
