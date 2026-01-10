@@ -96,7 +96,7 @@ fn begin_ident(c: char) -> bool {
 }
 
 fn continue_ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
+    c.is_alphanumeric() || c == '_' || c=='\'' || (!c.is_ascii() && !c.is_control() && !c.is_whitespace())
 }
 
 impl<'a> std::iter::Iterator for Lexer<'a> {
