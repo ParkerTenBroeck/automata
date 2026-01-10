@@ -20,8 +20,7 @@ import { closeBrackets } from "npm:@codemirror/autocomplete";
 import wasm from "./wasm.ts"
 import { terminalPlugin } from "./terminal.ts";
 
-import { setAutomaton } from "./visualizer.ts";
-import { machine_from_json } from "./automata.ts";
+import { machine_from_json, setAutomaton } from "./automata.ts";
 import { sharedText } from "./share.ts";
 import { examples } from "./examples.ts";
 

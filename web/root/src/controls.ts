@@ -1,3 +1,4 @@
+import { resetSimulation, stepSimulation } from "./automata.ts";
 import {nodes, edges, network} from "./visualizer.ts"
 
 const togglePhysicsBtn = document.getElementById("togglePhysics") as HTMLButtonElement;
@@ -8,14 +9,6 @@ const speedSlider      = document.getElementById("speed")         as HTMLInputEl
 const speedLabel       = document.getElementById("speedLabel")    as HTMLSpanElement;
 const resetSimBtn      = document.getElementById("resetSim") as HTMLButtonElement;
 
-
-function stepSimulation(): void {
-  console.log("step");
-}
-
-function resetSimulation(): void {
-  console.log("reset");
-}
 
 // ---- Physics toggle (styled label) ----
 function setPhysicsButtonUI(enabled: boolean) {
@@ -106,12 +99,7 @@ stepBtn.onclick = () => {
 };
 
 resetSimBtn.onclick = () => {
-  // Stop if running
   if (running) setRunning(false);
-
-  // Reset
   resetSimulation();
-
-  // Optional: re-enable Step after reset
   stepBtn.disabled = false;
 };

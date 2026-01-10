@@ -3,7 +3,7 @@
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
 import { StateEffect } from "npm:@codemirror/state";
-import { Machine } from "./automata.ts";
+import { automaton, Machine, setAutomaton } from "./automata.ts";
 import { getText } from "./editor.ts";
 
 export const nodes = new vis.DataSet<vis.Node>();
@@ -125,30 +125,6 @@ export function updateGraphTheme() {
   setAutomaton(automaton)
 }
 
-let automaton: Machine = {
-  type: "fa",
-  alphabet: new Map(),
-  final_states: new Map(),
-  initial_state: "",
-  states: new Map(),
-  transitions: new Map(),
-  transitions_components: new Map(),
-  edges: new Map(),
-};
-
-export function clearAutomaton() {
-  automaton = {
-    type: "fa",
-    alphabet: new Map(),
-    final_states: new Map(),
-    initial_state: "",
-    states: new Map(),
-    transitions: new Map(),
-    transitions_components: new Map(),
-    edges: new Map(),
-  };
-}
-
 
 let _measureCanvas: HTMLCanvasElement | null = null;
 
@@ -163,9 +139,7 @@ export function measureTextWidth(text: string, font: string): number {
   return ctx.measureText(text).width;
 }
 
-export function setAutomaton(auto: Machine) {
-  automaton = auto;
-
+export function updateVisualization() {
   // Populate nodes
   for (const state of automaton.states.keys()) {
     
@@ -186,7 +160,7 @@ export function setAutomaton(auto: Machine) {
   }
 
   // Populate edges
-  for (const [edge_id, transitions] of auto.edges) {
+  for (const [edge_id, transitions] of automaton.edges) {
     const to_from = edge_id.split("#");
     const vadjust = -getGraphTheme().edge_font_size *
         Math.floor(transitions.length / 2);
@@ -202,7 +176,7 @@ export function setAutomaton(auto: Machine) {
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
+        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
       });
     } else {
       edges.add({
@@ -210,19 +184,19 @@ export function setAutomaton(auto: Machine) {
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
+        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
       });
     }
   }
 
   for (const edge_id of edges.getIds()) {
-    if (!auto.edges.has(edge_id as string)) {
+    if (!automaton.edges.has(edge_id as string)) {
       edges.remove(edge_id);
     }
   }
 
   for (const node_id of nodes.getIds()) {
-    if (!auto.states.has(node_id as string)) {
+    if (!automaton.states.has(node_id as string)) {
       nodes.remove(node_id);
     }
   }
