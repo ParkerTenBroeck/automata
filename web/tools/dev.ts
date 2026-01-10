@@ -46,7 +46,7 @@ await startServer();
 
 console.log("👀 watching for changes…");
 
-const watcher = Deno.watchFs(["root", "src"]);
+const watcher = Deno.watchFs(["root", "../automata", "../web_lib"]);
 for await (const event of watcher) {
   if (
     event.kind === "modify" ||

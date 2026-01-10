@@ -26,6 +26,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "automata-cli"
+version = "0.1.0"
+
+[[package]]
 name = "automata-web"
 version = "0.1.0"
 dependencies = [
