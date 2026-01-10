@@ -73,11 +73,12 @@ export function updateGraphTheme() {
 
   network.setOptions({
     nodes: {
+      labelHighlightBold: false,
       font: {
         color: gt.fg_0,
         bold: {
           color: gt.fg_1,
-          mod: "",
+          // mod: "",
         },
       },
     },
@@ -85,13 +86,15 @@ export function updateGraphTheme() {
       labelHighlightBold: true,
       font: {
         align: "top",
+        face: 'arial',
         size: gt.edge_font_size,
         color: gt.fg_0,
         strokeColor: gt.bg_0,
         bold: {
           color: gt.fg_1,
+          face: 'arial',
           size: gt.edge_font_size,
-          mod: "",
+          mod: "bold",
         },
       },
       color: {
@@ -113,6 +116,7 @@ let automaton: Machine = {
   initial_state: "",
   states: new Map(),
   transitions: new Map(),
+  transitions_components: new Map(),
   edges: new Map(),
 };
 
@@ -124,6 +128,7 @@ export function clearAutomaton() {
     initial_state: "",
     states: new Map(),
     transitions: new Map(),
+    transitions_components: new Map(),
     edges: new Map(),
   };
 }
@@ -147,12 +152,16 @@ export function setAutomaton(auto: Machine) {
     }
   }
 
-  // // Populate edges
+  // Populate edges
   for (const [edge_id, transitions] of auto.edges) {
     const to_from = edge_id.split("#");
+    const vadjust = -getGraphTheme().edge_font_size *
+        Math.floor(transitions.length / 2);
     const font = {
-      vadjust: -getGraphTheme().edge_font_size *
-        Math.floor(transitions.length / 2),
+      vadjust,
+        bold: {
+          vadjust
+        }
     };    
     if (edges.get(edge_id)) {
       edges.update({
@@ -272,7 +281,7 @@ function renderNode({
   state: { selected, hover },
   style,
   label,
-}: any) {
+}: {ctx: CanvasRenderingContext2D, id: string, x: number, y: number, state: {selected: boolean, hover: boolean}, style: any, label: string}) {
   return {
     drawNode() {
       const t = getGraphTheme();
@@ -294,6 +303,7 @@ function renderNode({
 
       ctx.save();
 
+      ctx.font = hover||selected?'bold 14px arial':'14px arial';
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -352,7 +362,6 @@ function renderNode({
       //   }
       // }
 
-      // @ts-expect-error bad library
       const node: vis.Node = nodes.get(id)!;
       const physicsOff = node.physics === false;
       if (physicsOff) {
