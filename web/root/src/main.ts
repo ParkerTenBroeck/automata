@@ -7,5 +7,6 @@ import "./examples.ts"
 import "./visualizer.ts"
 import "./editor.ts"
 import "./simulation.ts"
+import "./terminal.ts"
 
 bus.emit("begin", undefined);
