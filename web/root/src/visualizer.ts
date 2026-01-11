@@ -2,9 +2,7 @@
 
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
-import { StateEffect } from "npm:@codemirror/state";
-import { automaton, Machine, setAutomaton } from "./automata.ts";
-import { getText } from "./editor.ts";
+import { automaton, setAutomaton, sim } from "./automata.ts";
 
 export const nodes = new vis.DataSet<vis.Node>();
 export const edges = new vis.DataSet<vis.Edge>();
@@ -298,7 +296,7 @@ function renderNode({
       const isFinal = automaton.final_states
         ? automaton.final_states.has(id)
         : false;
-      const isActive = false;
+      const isActive = sim?sim.current_states.has(id):false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
       const stroke = isActive ? t.current_node_border : t.node_border;
@@ -340,34 +338,33 @@ function renderNode({
         drawInitialArrow(ctx, x, y, r, t.edge);
       }
 
-      // const badgeText = "bleh\npee";
-      // if (badgeText) {
-      //   const lines = badgeText.split("\n").slice(0, 3);
-      //   const padX = 8;
-      //   const padY = 6;
-      //   const lineH = 14;
+      if (isActive) {
+        const paths = sim?.current_states.get(id)!;
+        const padX = 8;
+        const padY = 6;
+        const lineH = 14;
 
-      //   let w = 0;
-      //   for (const ln of lines) w = Math.max(w, ctx.measureText(ln).width);
-      //   const boxW = w + padX * 2;
-      //   const boxH = lines.length * lineH + padY * 2;
+        let w = 0;
+        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.toString()).width);
+        const boxW = w + padX * 2;
+        const boxH = paths.length * lineH + padY * 2;
 
-      //   const bx = x - boxW / 2;
-      //   const by = y - r - 12 - boxH;
+        const bx = x - boxW / 2;
+        const by = y - r - 12 - boxH;
 
-      //   ctx.fillStyle = t.bg_1;
-      //   ctx.strokeStyle = t.bg_2;
-      //   ctx.lineWidth = 1;
-      //   roundRect(ctx, bx, by, boxW, boxH, 8);
-      //   ctx.fill();
-      //   ctx.stroke();
+        ctx.fillStyle = t.bg_1;
+        ctx.strokeStyle = t.bg_2;
+        ctx.lineWidth = 1;
+        roundRect(ctx, bx, by, boxW, boxH, 8);
+        ctx.fill();
+        ctx.stroke();
 
-      //   ctx.fillStyle = t.fg_0;
-      //   ctx.textBaseline = "top";
-      //   for (let i = 0; i < lines.length; i++) {
-      //     ctx.fillText(lines[i], x, by + padY + i * lineH);
-      //   }
-      // }
+        ctx.textBaseline = "top";
+        for (let i = 0; i < paths.length; i++) {
+          ctx.fillStyle = paths[i].accepted?t.current_node_border:t.fg_0;
+          ctx.fillText(paths[i].toString(), x, by + padY + i * lineH);
+        }
+      }
 
       const node: vis.Node = nodes.get(id)!;
       const physicsOff = node.physics === false;

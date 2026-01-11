@@ -1,4 +1,4 @@
-import { updateVisualization } from "./visualizer.ts";
+import { network, updateVisualization } from "./visualizer.ts";
 
 export type Machine = Fa | Pda | Tm;
 
@@ -203,21 +203,58 @@ export type Tm = {
   edges: Map<string, Edge[]>;
 };
 
-export type FaState = {
-  state: State;
-  position: number;
+export type SimStepResult = "pending" | "accept" | "reject";
+
+export class FaState {
+  readonly state: State;
+
+  readonly position: number;
+  readonly input: string;
+  readonly accepted: boolean = false;
+  private repr!: string;
+
+  constructor(state: State, position: number, input: string){
+    this.state=state;
+    this.position=position;
+    this.input = input;
+  }
+
+  toString(): string{
+    if(!this.repr) this.repr = this.state + " " + this.position;
+    return this.repr
+  }
 };
 
 export class FaSim {
-  step(): string {
-    return "";
+
+  current_states: Map<string, FaState[]> = new Map();
+  accepted: FaState[] = []
+  
+  step(): SimStepResult {
+    return "pending";
   }
 }
 
-export type PdaState = {
-  state: State;
-  stack: Symbol[];
-  position: number;
+export class PdaState {
+  readonly state: State;
+  readonly stack: Symbol[];
+
+  readonly position: number;
+  readonly input: string;
+  readonly accepted: boolean = false
+  private repr!: string;
+
+  constructor(state: State, stack: Symbol[], position: number, input: string){
+    this.state=state;
+    this.stack=stack;
+    this.position=position;
+    this.input = input;
+  }
+
+  toString(): string{
+    if(!this.repr) this.repr = this.state + " [" + this.stack + "]" + " " + this.position;
+    return this.repr
+  }
 };
 
 export class PdaSim {
@@ -225,28 +262,43 @@ export class PdaSim {
   paths: PdaState[];
   input: string;
 
+  current_states: Map<string, PdaState[]> = new Map();
+  accepted: PdaState[] = []
+
   constructor(machine: Pda, input: string) {
     this.machine = machine;
-    this.paths = [{
-      state: machine.initial_state,
-      stack: [machine.initial_stack],
-      position: 0,
-    }];
+    this.paths = [new PdaState(machine.initial_state, [machine.initial_stack], 0, input)];
+    this.current_states.set(machine.initial_state, [this.paths[0]])
     this.input = input;
   }
 
-  step(): string {
-    const paths = [];
-    console.log(this.paths);
+  step(): SimStepResult {
+    if (this.paths.length == 0) return "reject";
+    if (this.accepted.length != 0) return "accept";
+
+    const paths: PdaState[] = [];
+    this.current_states.clear();
+
+    const push = (state: PdaState) => {
+      paths.push(state);
+      if (!this.current_states.has(state.state)) this.current_states.set(state.state, []);
+      this.current_states.get(state.state)?.push(state);
+
+      if (
+        state.position == this.input.length && this.machine.final_states &&
+        this.machine.final_states.has(state.state)
+       ||
+        state.position == this.input.length && !this.machine.final_states &&
+        state.stack.length == 1 && state.stack[0] == this.machine.initial_stack
+      ) {
+        
+        // @ts-expect-error sillllyyyy
+        state.accepted = true
+        this.accepted.push(state);
+      }
+    };
+
     for (const path of this.paths) {
-      if (
-        path.position == this.input.length && this.machine.final_states &&
-        this.machine.final_states.has(path.state)
-      ) return "accept";
-      if (
-        path.position == this.input.length && !this.machine.final_states &&
-        path.stack.length == 1 && path.stack[0] == this.machine.initial_stack
-      ) return "accept";
 
       const stack = path.stack.pop()!;
       const letter_map = this.machine.transitions_components.get(path.state)
@@ -254,11 +306,7 @@ export class PdaSim {
       if (!letter_map) continue;
 
       for (const to of letter_map.get(null) ?? []) {
-        paths.push({
-          state: to.state,
-          position: path.position,
-          stack: path.stack.concat(to.stack),
-        });
+        push(new PdaState(to.state, path.stack.concat(to.stack), path.position, this.input));
       }
 
       if (path.position >= this.input.length) continue;
@@ -266,19 +314,51 @@ export class PdaSim {
       const char = this.input.charAt(path.position);
 
       for (const to of letter_map.get(char) ?? []) {
-        paths.push({
-          state: to.state,
-          position: path.position + 1,
-          stack: path.stack.concat(to.stack),
-        });
+        push(new PdaState(to.state, path.stack.concat(to.stack), path.position+1, this.input));
       }
     }
     this.paths = paths;
-    return paths.length == 0 ? "reject" : "pending";
+
+
+    if (this.paths.length == 0) return "reject";
+    if (this.accepted.length != 0) return "accept";
+    return "pending"
   }
 }
 
-export type Sim = FaSim | PdaSim | null 
+export class TmState{
+  readonly state: State;
+  readonly tape: Symbol[];
+
+  readonly position: number;
+  readonly input: string;
+  readonly accepted: boolean = false
+  private repr!: string;
+
+    constructor(state: State, tape: Symbol[], position: number, input: string){
+    this.state=state;
+    this.tape = tape;
+    this.position=position;
+    this.input = input;
+  }
+
+  toString(): string{
+    if(!this.repr) this.repr = this.state + " " + this.position;
+    return this.repr
+  }
+
+}
+
+export class TmSim {
+  current_states: Map<string, TmState[]> = new Map();
+  accepted: TmState[] = []
+  
+  step(): SimStepResult {
+    return "pending"
+  }
+} 
+
+export type Sim = FaSim | PdaSim | TmSim | null 
 export let sim: Sim = null;
 
 export let automaton: Machine = {
@@ -298,6 +378,7 @@ export function clearSimulation(){
 
 export function setSimulation(sim_: Sim){
   sim = sim_;
+  network.redraw()
 }
 
 export function setAutomaton(auto: Machine) {
@@ -323,6 +404,7 @@ export function stepSimulation(): void {
   if (sim) {
     console.log(sim.step());
   }
+  network.redraw()
 }
 
 export function resetSimulation(): void {
@@ -330,7 +412,7 @@ export function resetSimulation(): void {
     case "fa":
       break;
     case "pda":
-      setSimulation(new PdaSim(automaton as Pda, "aabb"));
+      setSimulation(new PdaSim(automaton as Pda, "aabbaabbaa"));
       break;
     case "tm":
       break;
