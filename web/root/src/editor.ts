@@ -1,67 +1,71 @@
 // deno-lint-ignore-file
 
 import {
-  EditorView,
-  keymap,
-  hoverTooltip,
   Decoration,
-  lineNumbers,
+  EditorView,
+  highlightActiveLine,
   highlightActiveLineGutter,
-  highlightActiveLine
+  hoverTooltip,
+  keymap,
+  lineNumbers,
 } from "npm:@codemirror/view";
 
 import { EditorState, StateField, Text } from "npm:@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "npm:@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+} from "npm:@codemirror/commands";
 import { bracketMatching, indentOnInput } from "npm:@codemirror/language";
 import { closeBrackets } from "npm:@codemirror/autocomplete";
 
+import wasm from "./wasm.ts";
 
-import wasm from "./wasm.ts"
-
-import { sharedText } from "./share.ts";
+import { Share } from "./share.ts";
 import { examples } from "./examples.ts";
 import { bus } from "./bus.ts";
 
-
-function tokenize(text: string) {
+function tokenize(text: string): wasm.Tok[] {
   try {
     return wasm.lex(text);
   } catch (e) {
-    console.log(e)
-    return []
+    console.log(e);
+    return [];
   }
 }
 
-function compile(text: string): wasm.CompileResult {
+function compile(
+  text: string,
+): { log: wasm.CompileLog[]; ansi_log: string; machine: string | undefined } {
   try {
     return wasm.compile(text);
   } catch (e) {
     console.log(e);
-    // @ts-expect-error wasm defines extra cleanup 
-    return {log: [], log_formatted: "", graph: ""};
+    return { log: [], ansi_log: "", machine: "" };
   }
 }
 
 const eventBusConnection = StateField.define({
   create(state) {
     const text = state.doc.toString();
-    bus.emit("editor/change", {text, doc: state.doc});
+    bus.emit("editor/change", { text, doc: state.doc });
     return buildAnalysis(text, state.doc);
   },
   update(value, tr) {
     if (!tr.docChanged) return value;
     const text = tr.state.doc.toString();
-    bus.emit("editor/change", {text, doc: state.doc});
+    bus.emit("editor/change", { text, doc: state.doc });
     return buildAnalysis(text, tr.state.doc);
   },
   provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
 });
 
 function buildAnalysis(text: string, doc: Text) {
+  save(text);
   const tokens = tokenize(text);
   const { log, ansi_log, machine } = compile(text);
 
-  bus.emit("compiled", {log, ansi_log, machine})
+  bus.emit("compiled", { log, ansi_log, machine });
 
   const marks = [];
   const docLen = doc.length;
@@ -88,7 +92,9 @@ function buildAnalysis(text: string, doc: Text) {
       marks.push(Decoration.mark({ class: cls }).range(start, end));
     } else {
       const end = Math.min(docLen, start + 1);
-      if (end > start) marks.push(Decoration.mark({ class: cls }).range(start, end));
+      if (end > start) {
+        marks.push(Decoration.mark({ class: cls }).range(start, end));
+      }
     }
   }
 
@@ -96,8 +102,7 @@ function buildAnalysis(text: string, doc: Text) {
   return { tokens, log, ansi_log, deco };
 }
 
-const tokenClass = (t: string) =>
-({
+const tokenClass = (t: string) => ({
   comment: "tok-comment",
   keyword: "tok-keyword",
   error: "tok-error",
@@ -112,7 +117,6 @@ const tokenClass = (t: string) =>
   rbrace: "rb-",
   rbracket: "rb-",
 }[t] || "tok-ident");
-
 
 function severityClass(sev: string) {
   const s = (sev || "error").toLowerCase();
@@ -129,10 +133,16 @@ function sevRank(sev: string) {
 // ===================== Hover tooltip (uses cached diags) =====================
 const diagHover = hoverTooltip((view, pos) => {
   const { log } = view.state.field(eventBusConnection);
-  const hits = log.filter((d) => d.start !== undefined && d.end !== undefined && pos >= d.start && pos <= d.end);
+  const hits = log.filter((d) =>
+    d.start !== undefined && d.end !== undefined && pos >= d.start &&
+    pos <= d.end
+  );
   if (hits.length === 0) return null;
 
-  const top = hits.reduce((a, b) => (sevRank(b.level) > sevRank(a.level) ? b : a), hits[0]);
+  const top = hits.reduce(
+    (a, b) => (sevRank(b.level) > sevRank(a.level) ? b : a),
+    hits[0],
+  );
 
   return {
     pos,
@@ -144,8 +154,9 @@ const diagHover = hoverTooltip((view, pos) => {
 
       const title = document.createElement("div");
       title.className = `tipTitle ${top.level}`;
-      title.textContent =
-        hits.length === 1 ? top.level.toUpperCase() : `${top.level.toUpperCase()} (${hits.length})`;
+      title.textContent = hits.length === 1
+        ? top.level.toUpperCase()
+        : `${top.level.toUpperCase()} (${hits.length})`;
 
       const body = document.createElement("div");
       body.className = "tipBody";
@@ -162,24 +173,20 @@ const diagHover = hoverTooltip((view, pos) => {
   };
 });
 
-function save(text: string){
+function save(text: string) {
   globalThis.localStorage.save = text;
 }
 
-function getSaved(): string | undefined{
+function getSaved(): string | undefined {
   return globalThis.localStorage.save;
 }
 
-export function setText(text: string){
-  editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text } });
-}
-
-export function getText(): string{
-  return editor.state.doc.toString()
+function defaultText(): string {
+  return Share.sharedText() ?? getSaved() ?? examples[0].machine;
 }
 
 const state = EditorState.create({
-  doc: "",
+  doc: defaultText(),
   extensions: [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -202,4 +209,17 @@ const editor = new EditorView({
   parent: document.getElementById("editor")!,
 });
 
-bus.on("begin", _ => setText(sharedText() ?? getSaved() ?? examples[0].machine))
+bus.on(
+  "begin",
+  (_) => bus.emit("controls/editor/set_text", { text: defaultText() }),
+);
+
+bus.on("controls/editor/set_text", ({ text }) => {
+  editor.dispatch({
+    changes: { from: 0, to: editor.state.doc.length, insert: text },
+  });
+});
+
+bus.on("example/selected", ({ example }) => {
+  bus.emit("controls/editor/set_text", { text: example.machine });
+});

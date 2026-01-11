@@ -1,4 +1,4 @@
-import { setText } from "./editor.ts";
+import { bus } from "./bus.ts";
 
 export type Category =
   | "Tutorial"
@@ -241,6 +241,6 @@ function buildExamplesDropdown(
 }
 
 const selectEl = document.getElementById("exampleSelect") as HTMLSelectElement;
-buildExamplesDropdown(selectEl, examples, (picked) => {
-  setText(picked.machine);
+buildExamplesDropdown(selectEl, examples, (example) => {
+  bus.emit("example/selected", {example});
 });

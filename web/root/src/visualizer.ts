@@ -7,11 +7,11 @@ import type { Sim } from "./simulation.ts";
 import type { Machine } from "./automata.ts";
 
 
-bus.on("controls/physics", ({enabled}) => {
+bus.on("controls/vis/physics", ({enabled}) => {
   network.setOptions({ physics: { enabled } });
   network.setOptions({edges: {smooth: enabled}});
 });
-bus.on("controls/reset_network", _ => {
+bus.on("controls/vis/reset_network", _ => {
     try {
         nodes.forEach((n) => {
           n.physics = true;
@@ -285,17 +285,16 @@ function createGraph(): vis.Network {
       nodes: {
         shape: "custom",
         size: 18,
-        // // @ts-expect-error  bad library
-        // chosen: {
-        //   node: chosen_node,
-        // },
         // @ts-expect-error  bad library
+        chosen: {
+          node: chosen_node,
+        },
         ctxRenderer: renderNode,
       },
       edges: {
         chosen: {
-          // // @ts-expect-error bad library
-          // edge: chosen_edge,
+          // @ts-expect-error bad library
+          edge: chosen_edge,
         },
         arrowStrikethrough: false,
         arrows: "to",
@@ -304,9 +303,8 @@ function createGraph(): vis.Network {
   );
   vis.DataSet;
 
-  network.on("doubleClick", (params: any) => {
+  network.on("doubleClick", (params: {nodes: string[]}) => {
     for (const node_id of params.nodes) {
-      // @ts-expect-error bad library
       const node: vis.Node = nodes.get(node_id)!;
       node.physics = !node.physics;
       nodes.update(node);
@@ -325,7 +323,7 @@ function renderNode({
   state: { selected, hover },
   style,
   label,
-}: {ctx: CanvasRenderingContext2D, id: string, x: number, y: number, state: {selected: boolean, hover: boolean}, style: any, label: string}) {
+}: {ctx: CanvasRenderingContext2D, id: string, x: number, y: number, state: {selected: boolean, hover: boolean}, style: vis.NodeOptions, label: string}) {
   return {
     drawNode() {
       const t = getGraphTheme();
