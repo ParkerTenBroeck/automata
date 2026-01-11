@@ -2,51 +2,60 @@ use std::collections::HashSet;
 
 use super::*;
 
-use crate::{delta_lower, gamma_upper, loader::{
+use crate::{delta_lower, dual_struct_serde, gamma_upper, loader::{
     Context, INITIAL_STACK, INITIAL_STATE, Spanned, ast::{self, Symbol as Sym}, log::LogSink
 }, sigma_upper};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TransitionFrom<'a> {
-    pub state: State<'a>,
-    pub letter: Option<Letter<'a>>,
-    pub symbol: Symbol<'a>,
+dual_struct_serde! {
+    #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+    pub struct TransitionFrom<'a> {
+        #[serde(borrow)]
+        pub state: State<'a>,
+        #[serde(borrow)]
+        pub letter: Option<Letter<'a>>,
+        #[serde(borrow)]
+        pub symbol: Symbol<'a>,
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TransitionTo<'a> {
-    pub state: State<'a>,
-    pub stack: Vec<Symbol<'a>>,
+dual_struct_serde! {
+    #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+    pub struct TransitionTo<'a> {
+        #[serde(borrow)]
+        pub state: State<'a>,
+        #[serde(borrow)]
+        pub stack: Vec<Symbol<'a>>,
 
-    pub transition: Span,
-    pub function: Span,
+        pub transition: Span,
+        pub function: Span,
+    }
 }
 
-#[derive(Clone, Debug)]
-#[allow(unused)]
-#[cfg_attr(feature = "serde", serde_with::serde_as)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Pda<'a> {
-    pub initial_state: State<'a>,
-    pub initial_stack: Symbol<'a>,
-    pub states: HashMap<State<'a>, StateInfo>,
-    pub symbols: HashMap<Symbol<'a>, SymbolInfo>,
-    pub alphabet: HashMap<Letter<'a>, LetterInfo>,
+dual_struct_serde! { {#[serde_with::serde_as]}
+    #[derive(Clone, Debug)]
+    pub struct Pda<'a> {
+        #[serde(borrow)]
+        pub initial_state: State<'a>,
+        #[serde(borrow)]
+        pub initial_stack: Symbol<'a>,
+        #[serde(borrow)]
+        pub states: HashMap<State<'a>, StateInfo>,
+        #[serde(borrow)]
+        pub symbols: HashMap<Symbol<'a>, SymbolInfo>,
+        #[serde(borrow)]
+        pub alphabet: HashMap<Letter<'a>, LetterInfo>,
 
-    pub final_states: Option<HashMap<State<'a>, StateInfo>>,
+        #[serde(borrow)]
+        pub final_states: Option<HashMap<State<'a>, StateInfo>>,
 
-    #[cfg(feature = "serde")]
-    #[serde_as(as = "serde_with::Seq<(_, _)>")]
-    pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
-
-    #[cfg(not(feature = "serde"))]
-    pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+        #[serde(borrow)]
+        #[serde_as(as = "serde_with::Seq<(_, _)>")]
+        pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+    }
 }
 
 impl<'a> Pda<'a> {
-    pub fn parse(
+    pub fn compile(
         items: impl Iterator<Item = Spanned<ast::TopLevel<'a>>>,
         ctx: &mut Context<'a>,
         options: Options,

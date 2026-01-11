@@ -1,9 +1,8 @@
 use crate::{
-    automatan::*,
-    loader::{
+    automatan::*, dual_enum_serde, dual_struct_serde, loader::{
         ast::TopLevel,
         log::{LogEntry, LogSink},
-    },
+    }
 };
 
 pub mod ast;
@@ -120,13 +119,14 @@ impl<'a> Context<'a> {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type"))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
-pub enum Machine<'a> {
-    Fa(fa::Fa<'a>),
-    Pda(pda::Pda<'a>),
-    Tm(tm::Tm<'a>),
+dual_enum_serde!{ 
+    {#[serde(tag = "type")] #[serde(rename_all = "snake_case")]}  
+    #[derive(Clone, Debug)]
+    pub enum Machine<'a> {
+        Fa(#[serde(borrow)] fa::Fa<'a>),
+        Pda(#[serde(borrow)] pda::Pda<'a>),
+        Tm(#[serde(borrow)] tm::Tm<'a>),
+    }
 }
 
 pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
@@ -194,9 +194,9 @@ pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
     Some(match parse_type(items.next(), ctx)? {
         Type::Dfa => Machine::Fa(fa::Fa::compile(items, ctx, D)?),
         Type::Nfa => Machine::Fa(fa::Fa::compile(items, ctx, N)?),
-        Type::Dpda => Machine::Pda(pda::Pda::parse(items, ctx, D)?),
-        Type::Npda => Machine::Pda(pda::Pda::parse(items, ctx, N)?),
-        Type::Tm => Machine::Tm(tm::Tm::parse(items, ctx, D)?),
-        Type::Ntm => Machine::Tm(tm::Tm::parse(items, ctx, N)?),
+        Type::Dpda => Machine::Pda(pda::Pda::compile(items, ctx, D)?),
+        Type::Npda => Machine::Pda(pda::Pda::compile(items, ctx, N)?),
+        Type::Tm => Machine::Tm(tm::Tm::compile(items, ctx, D)?),
+        Type::Ntm => Machine::Tm(tm::Tm::compile(items, ctx, N)?),
     })
 }

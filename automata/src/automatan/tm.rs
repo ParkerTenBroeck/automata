@@ -2,57 +2,65 @@ use std::collections::HashSet;
 
 use super::*;
 
-use crate::{delta_lower, gamma_upper, loader::{
+use crate::{delta_lower, dual_struct_serde, gamma_upper, loader::{
     BLANK_SYMBOL, Context, Spanned, ast::{self, Symbol as Sym}, log::LogSink
 }};
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TransitionFrom<'a> {
-    pub state: State<'a>,
-    pub symbol: Symbol<'a>,
+dual_struct_serde! {
+    #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+    pub struct TransitionFrom<'a> {
+        #[serde(borrow)]
+        pub state: State<'a>,
+        #[serde(borrow)]
+        pub symbol: Symbol<'a>,
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
     Left,
     Right,
     None,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TransitionTo<'a> {
-    pub state: State<'a>,
-    pub symbol: Symbol<'a>,
-    pub direction: Direction,
+dual_struct_serde! {
+    #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+    pub struct TransitionTo<'a> {
+        #[serde(borrow)]
+        pub state: State<'a>,
+        #[serde(borrow)]
+        pub symbol: Symbol<'a>,
+        pub direction: Direction,
 
-    pub transition: Span,
-    pub function: Span,
+        pub transition: Span,
+        pub function: Span,
+    }
 }
 
-#[derive(Clone, Debug)]
-#[allow(unused)]
-#[cfg_attr(feature = "serde", serde_with::serde_as)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Tm<'a> {
-    pub initial_state: State<'a>,
-    pub initial_tape: Symbol<'a>,
-    pub states: HashMap<State<'a>, StateInfo>,
-    pub symbols: HashMap<Symbol<'a>, SymbolInfo>,
+dual_struct_serde! {{#[serde_with::serde_as]}
+    #[derive(Clone, Debug)]
+    pub struct Tm<'a> {
+        #[serde(borrow)]
+        pub initial_state: State<'a>,
+        #[serde(borrow)]
+        pub initial_tape: Symbol<'a>,
+        #[serde(borrow)]
+        pub states: HashMap<State<'a>, StateInfo>,
+        #[serde(borrow)]
+        pub symbols: HashMap<Symbol<'a>, SymbolInfo>,
 
-    pub final_states: HashMap<State<'a>, StateInfo>,
+        #[serde(borrow)]
+        pub final_states: HashMap<State<'a>, StateInfo>,
 
-    #[cfg(feature = "serde")]
-    #[serde_as(as = "serde_with::Seq<(_, _)>")]
-    pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
-    #[cfg(not(feature = "serde"))]
-    pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+        
+        #[serde(borrow)]
+        #[serde_as(as = "serde_with::Seq<(_, _)>")]
+        pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+    }
 }
 
 impl<'a> Tm<'a> {
-    pub fn parse(
+    pub fn compile(
         items: impl Iterator<Item = Spanned<ast::TopLevel<'a>>>,
         ctx: &mut Context<'a>,
         options: Options,
