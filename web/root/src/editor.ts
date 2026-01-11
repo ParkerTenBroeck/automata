@@ -5,7 +5,6 @@ import {
   keymap,
   hoverTooltip,
   Decoration,
-  ViewPlugin,
   lineNumbers,
   highlightActiveLineGutter,
   highlightActiveLine
@@ -18,11 +17,10 @@ import { closeBrackets } from "npm:@codemirror/autocomplete";
 
 
 import wasm from "./wasm.ts"
-import { terminalPlugin } from "./terminal.ts";
 
-import { machine_from_json, setAutomaton } from "./automata.ts";
 import { sharedText } from "./share.ts";
 import { examples } from "./examples.ts";
+import { bus } from "./bus.ts";
 
 
 function tokenize(text: string) {
@@ -44,31 +42,26 @@ function compile(text: string): wasm.CompileResult {
   }
 }
 
-export const analysisField = StateField.define({
+const eventBusConnection = StateField.define({
   create(state) {
     const text = state.doc.toString();
+    bus.emit("editor/change", {text, doc: state.doc});
     return buildAnalysis(text, state.doc);
   },
   update(value, tr) {
     if (!tr.docChanged) return value;
     const text = tr.state.doc.toString();
+    bus.emit("editor/change", {text, doc: state.doc});
     return buildAnalysis(text, tr.state.doc);
   },
   provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
 });
 
 function buildAnalysis(text: string, doc: Text) {
-  save(text);
   const tokens = tokenize(text);
-  const { log, log_formatted, graph } = compile(text);
+  const { log, ansi_log, machine } = compile(text);
 
-  if (graph){
-    try{
-      setAutomaton(machine_from_json(graph))
-    }catch(e){
-      console.log(e);
-    }
-  }
+  bus.emit("compiled", {log, ansi_log, machine})
 
   const marks = [];
   const docLen = doc.length;
@@ -100,7 +93,7 @@ function buildAnalysis(text: string, doc: Text) {
   }
 
   const deco = Decoration.set(marks, true);
-  return { tokens, log, log_formatted, deco };
+  return { tokens, log, ansi_log, deco };
 }
 
 const tokenClass = (t: string) =>
@@ -135,7 +128,7 @@ function sevRank(sev: string) {
 
 // ===================== Hover tooltip (uses cached diags) =====================
 const diagHover = hoverTooltip((view, pos) => {
-  const { log } = view.state.field(analysisField);
+  const { log } = view.state.field(eventBusConnection);
   const hits = log.filter((d) => d.start !== undefined && d.end !== undefined && pos >= d.start && pos <= d.end);
   if (hits.length === 0) return null;
 
@@ -186,7 +179,7 @@ export function getText(): string{
 }
 
 const state = EditorState.create({
-  doc: sharedText() ?? getSaved() ?? examples[0].machine,
+  doc: "",
   extensions: [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -197,9 +190,8 @@ const state = EditorState.create({
     closeBrackets(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
-    analysisField,
+    eventBusConnection,
     diagHover,
-    terminalPlugin,
 
     EditorView.lineWrapping,
   ],
@@ -209,3 +201,5 @@ const editor = new EditorView({
   state,
   parent: document.getElementById("editor")!,
 });
+
+bus.on("begin", _ => setText(sharedText() ?? getSaved() ?? examples[0].machine))

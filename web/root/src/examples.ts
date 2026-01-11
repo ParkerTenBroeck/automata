@@ -10,9 +10,9 @@ export type Category =
   | "NTM";
 
 export class Example {
-  category: Category;
-  title: string;
-  machine: string;
+  readonly category: Category;
+  readonly title: string;
+  readonly machine: string;
 
   constructor(category: Category, title: string, machine: string) {
     this.category = category;
@@ -21,7 +21,7 @@ export class Example {
   }
 }
 
-export const examples: Example[] = [
+export const examples: readonly Example[] = [
   new Example(
     "Tutorial",
     "DFA",
@@ -174,7 +174,7 @@ const CATEGORY_ORDER: Category[] = [
 
 function buildExamplesDropdown(
   selectEl: HTMLSelectElement,
-  examples: Example[],
+  examples: readonly Example[],
   onPick?: (ex: Example) => void,
 ) {
   // Clear everything except the first placeholder option (if present)

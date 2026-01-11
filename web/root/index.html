@@ -30,7 +30,7 @@
 
             <section class="flexCol gap marginTop">
                 <div class="flexCenter sidePadding gap">
-                    <button id="themeToggle" class="btn btn-grey" title="Toggle light/dark">
+                    <button id="themeToggle" class="btn btn-blue" title="Toggle light/dark">
                         🌙 Dark
                     </button>
                     <button class="btn btm-grey" style="position: relative" id="shareBtn" type="button">
@@ -46,6 +46,14 @@
                     </select>
                 </div>
                 <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>
+
+                <div class="flexCenter sidePadding" style="font-size: calc(16px);font-weight: bold;color: var(--fg-1)">
+                    <span style="margin-right: 0.5em;">Status: </span><span style="color: var(--fg-2)" id="simulationStatus">N/A</span>
+                </div>
+                <div class="flexCenter sidePadding">
+                    <input id="machineInput" type="text" class="test-input" placeholder="Enter machine input…" />
+                </div>
+
             </section>
         </section>
 
@@ -53,7 +61,7 @@
 
         <div class="flexCol">
             <div class="controls" style="background: var(--bg-0)">
-                <button id="togglePhysics" class="btn btn-toggle active" title="Toggle physics layout">
+                <button id="togglePhysics" class="btn btn-red btn-toggle active" title="Toggle physics layout">
                     Physics: ON
                 </button>
 
@@ -63,21 +71,25 @@
 
                 <span class="spacer"></span>
 
-                <button id="resetSim" class="btn btn-blue" title="Stop and reset simulation">
-                    ⟲ Reset
+                <button id="reloadSim" class="btn btn-blue" title="Stop and Reload simulation">
+                    ⟲ Reload
                 </button>
-                <button id="playPause" class="btn btn-green" title="Run / pause simulation">
-                    ▶ Play
+                <button id="clearSim" class="btn btn-red" title="Stop and Clear simulation">
+                    ✖ Clear
                 </button>
 
-                <button id="step" class="btn btn-grey" title="Advance one step">
-                    Step
+
+                <button id="stepSim" class="btn btn-yellow" title="Advance one step">
+                   ⏭ Step
+                </button>
+                <button id="playPauseSim" class="btn btn-green" title="Run / pause simulation">
+                    ▶ Play
                 </button>
 
                 <label class="speed">
                     Speed
-                    <input id="speed" type="range" min="1" max="60" value="10" />
-                    <span id="speedLabel">10x</span>
+                    <input id="speedSim" type="range" min="1" max="60" value="1" />
+                    <span id="speedSimLabel">10x</span>
                 </label>
             </div>
             <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>

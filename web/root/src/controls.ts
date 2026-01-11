@@ -1,49 +1,70 @@
-import { resetSimulation, stepSimulation } from "./automata.ts";
-import {nodes, edges, network} from "./visualizer.ts"
+import { bus } from "./bus.ts";
 
-const togglePhysicsBtn = document.getElementById("togglePhysics") as HTMLButtonElement;
-const resetLayoutBtn   = document.getElementById("resetLayout")   as HTMLButtonElement;
-const playPauseBtn     = document.getElementById("playPause")     as HTMLButtonElement;
-const stepBtn          = document.getElementById("step")          as HTMLButtonElement;
-const speedSlider      = document.getElementById("speed")         as HTMLInputElement;
-const speedLabel       = document.getElementById("speedLabel")    as HTMLSpanElement;
-const resetSimBtn      = document.getElementById("resetSim") as HTMLButtonElement;
+const togglePhysicsBtn = document.getElementById(
+  "togglePhysics",
+) as HTMLButtonElement;
+const resetLayoutBtn = document.getElementById(
+  "resetLayout",
+) as HTMLButtonElement;
+const playPauseBtn = document.getElementById(
+  "playPauseSim",
+) as HTMLButtonElement;
+const stepBtn = document.getElementById("stepSim") as HTMLButtonElement;
+const speedSlider = document.getElementById("speedSim") as HTMLInputElement;
+const speedLabel = document.getElementById("speedSimLabel") as HTMLSpanElement;
+const reloadSimBtn = document.getElementById("reloadSim") as HTMLButtonElement;
+const clearSimBtn = document.getElementById("clearSim") as HTMLButtonElement;
 
-
-// ---- Physics toggle (styled label) ----
-function setPhysicsButtonUI(enabled: boolean) {
+bus.on("controls/physics", ({ enabled }) => {
   togglePhysicsBtn.classList.toggle("active", enabled);
   togglePhysicsBtn.textContent = enabled ? "Physics: ON" : "Physics: OFF";
-}
+});
 
 togglePhysicsBtn.onclick = () => {
   const enabled = !togglePhysicsBtn.classList.contains("active");
-  setPhysicsButtonUI(enabled);
-  network.setOptions({ physics: { enabled } });
-  network.setOptions({edges: {smooth: enabled}});
+  bus.emit("controls/physics", { enabled });
 };
 
-setPhysicsButtonUI(togglePhysicsBtn.classList.contains("active"));
+bus.emit("controls/physics", {
+  enabled: togglePhysicsBtn.classList.contains("active"),
+});
 
-resetLayoutBtn.onclick = () => {
-  try {
-      nodes.forEach((n) => {
-        n.physics = true;
-        n.x = undefined;
-        n.y = undefined;
-      });
-      network.setData({ nodes, edges });
-  } catch {
-    // Last resort
-    network.setData({ nodes, edges });
+resetLayoutBtn.onclick = () => bus.emit("controls/reset_network", undefined);
+
+clearSimBtn.onclick = () => bus.emit("controls/clear_simulation", undefined);
+
+stepBtn.onclick = () => {
+  bus.emit("controls/step_simulation", undefined);
+};
+
+reloadSimBtn.onclick = () => bus.emit("controls/reload_simulation", undefined);
+
+function updateButtons() {
+  stepBtn.disabled = !simulation_active || running;
+  playPauseBtn.disabled = !simulation_active;
+  clearSimBtn.disabled = !simulation_active;
+}
+
+bus.on("controls/reload_simulation", (_) => {
+  if (running) setRunning(false);
+  updateButtons();
+});
+
+bus.on("automata/sim/update", ({ simulation }) => {
+  simulation_active = !!simulation;
+  if (!simulation) {
+    if (running) setRunning(false);
   }
+  updateButtons();
+});
 
-  // If physics button is OFF, keep it OFF (don’t surprise the user)
-  const physicsEnabled = togglePhysicsBtn.classList.contains("active");
-  network.setOptions({ physics: { enabled: physicsEnabled } });
-};
+bus.on("automata/sim/after_step", ({ result }) => {
+  if (result !== "pending") {
+    if (running) setRunning(false);
+  }
+});
 
-// ---- Play/Pause + Speed ----
+let simulation_active = false;
 let running = false;
 let timer: number | null = null;
 
@@ -74,8 +95,7 @@ function restartTimer() {
   const intervalMs = Math.round(1000 / sps);
 
   timer = globalThis.window.setInterval(() => {
-    // If your step can throw, keep the interval alive:
-    try { stepSimulation(); } catch (e) { console.error(e); }
+    bus.emit("controls/step_simulation", undefined);
   }, intervalMs);
 }
 
@@ -93,13 +113,3 @@ function setRunning(on: boolean) {
 }
 
 playPauseBtn.onclick = () => setRunning(!running);
-
-stepBtn.onclick = () => {
-  stepSimulation();
-};
-
-resetSimBtn.onclick = () => {
-  if (running) setRunning(false);
-  resetSimulation();
-  stepBtn.disabled = false;
-};

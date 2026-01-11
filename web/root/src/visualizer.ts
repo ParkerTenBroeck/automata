@@ -1,143 +1,44 @@
 // deno-lint-ignore-file no-unversioned-import
-
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
-import { automaton, setAutomaton, sim } from "./automata.ts";
 
-export const nodes = new vis.DataSet<vis.Node>();
-export const edges = new vis.DataSet<vis.Edge>();
-
-type Color = string;
-type GraphTheme = {
-  bg_0: Color;
-  bg_1: Color;
-  bg_2: Color;
-  fg_0: Color;
-  fg_1: Color;
-  fg_2: Color;
-
-  node_anchor: Color;
-  node_border: Color;
-  current_node_border: Color;
-
-  edge: Color;
-  edge_hover: Color;
-  edge_active: Color;
-
-  font_face: string
-
-  node_font_size: number;
-  node_font: string,
-  node_font_bold: string,
-
-  edge_font_size: number;
-  edge_font: string,
-  edge_font_bold: string,
-};
-
-let _graphTheme: GraphTheme | null = null;
-
-function invalidateGraphThemeCache() {
-  _graphTheme = null;
-}
-
-function getGraphTheme(): GraphTheme {
-  function cssVar(name: string, fallback = ""): string {
-    return getComputedStyle(document.documentElement)
-      .getPropertyValue(name)
-      .trim() || fallback;
-  }
-
-  if (_graphTheme) return _graphTheme;
-
-  _graphTheme = {
-    bg_0: cssVar("--graph-bg-0"),
-    bg_1: cssVar("--graph-bg-1"),
-    bg_2: cssVar("--graph-bg-2"),
-    fg_0: cssVar("--graph-fg-0"),
-    fg_1: cssVar("--graph-fg-1"),
-    fg_2: cssVar("--graph-fg-2"),
-
-    node_anchor: cssVar("--graph-node-anchor"),
-    node_border: cssVar("--graph-node-border"),
-    current_node_border: cssVar("--graph-current-node-border"),
-
-    edge: cssVar("--graph-edge"),
-    edge_hover: cssVar("--graph-edge-hover"),
-    edge_active: cssVar("--graph-edge-active"),
-
-    font_face: cssVar("--graph-font"),
-
-    node_font_size: Number(cssVar("--graph-node-font-size")),
-    node_font: `${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
-    node_font_bold: `bold ${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
-
-    edge_font_size: Number(cssVar("--graph-edge-font-size")),
-    edge_font: `${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
-    edge_font_bold: `bold ${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
-  };
-
-  return _graphTheme;
-}
-
-export function updateGraphTheme() {
-  invalidateGraphThemeCache();
-  const gt = getGraphTheme();
-
-  network.setOptions({
-    nodes: {
-      labelHighlightBold: false,
-      font: {
-        color: gt.fg_0,
-        bold: {
-          color: gt.fg_1,
-        },
-      },
-    },
-    edges: {
-      labelHighlightBold: true,
-      font: {
-        align: "top",
-        face: gt.font_face,
-        size: gt.edge_font_size,
-        color: gt.fg_0,
-        strokeColor: gt.bg_0,
-        bold: {
-          color: gt.fg_1,
-          face: gt.font_face,
-          size: gt.edge_font_size,
-          mod: "bold",
-        },
-      },
-      color: {
-        color: gt.edge,
-        hover: gt.edge_hover,
-        highlight: gt.edge_active,
-      },
-      shadow: {
-        enabled: false,
-      },
-    },
-  });
-
-  setAutomaton(automaton)
-}
+import { bus } from "./bus.ts";
+import type { Sim } from "./simulation.ts";
+import type { Machine } from "./automata.ts";
 
 
-let _measureCanvas: HTMLCanvasElement | null = null;
+bus.on("controls/physics", ({enabled}) => {
+  network.setOptions({ physics: { enabled } });
+  network.setOptions({edges: {smooth: enabled}});
+});
+bus.on("controls/reset_network", _ => {
+    try {
+        nodes.forEach((n) => {
+          n.physics = true;
+          n.x = undefined;
+          n.y = undefined;
+        });
+        network.setData({ nodes, edges });
+    } catch {
+      // Last resort
+      network.setData({ nodes, edges });
+    }
+});
 
-export function measureTextWidth(text: string, font: string): number {
-  if (!_measureCanvas) {
-    _measureCanvas = document.createElement("canvas");
-  }
+bus.on("automata/sim/after_step", _ => {
+  network.redraw();
+});
 
-  const ctx = _measureCanvas.getContext("2d")!;
-  ctx.font = font;
+let simulation: Sim | null = null;
+bus.on("automata/sim/update", ({simulation: sim}) => {
+  simulation = sim;
+  network.redraw();
+});
 
-  return ctx.measureText(text).width;
-}
+let automaton: Machine
 
-export function updateVisualization() {
+bus.on("automata/update", ({automaton: auto}) => {
+  automaton = auto;
   // Populate nodes
   for (const state of automaton.states.keys()) {
     
@@ -187,17 +88,154 @@ export function updateVisualization() {
     }
   }
 
+  // delete old edges
   for (const edge_id of edges.getIds()) {
     if (!automaton.edges.has(edge_id as string)) {
       edges.remove(edge_id);
     }
   }
 
+  // delete old nodes
   for (const node_id of nodes.getIds()) {
     if (!automaton.states.has(node_id as string)) {
       nodes.remove(node_id);
     }
   }
+});
+
+
+const nodes = new vis.DataSet<vis.Node>();
+const edges = new vis.DataSet<vis.Edge>();
+
+
+let _graphTheme: GraphTheme | null = null;
+bus.on("theme/update", _ => {
+  _graphTheme = null;
+  updateGraphTheme()
+});
+
+
+type Color = string;
+type GraphTheme = {
+  bg_0: Color;
+  bg_1: Color;
+  bg_2: Color;
+  fg_0: Color;
+  fg_1: Color;
+  fg_2: Color;
+
+  node_anchor: Color;
+  node_border: Color;
+  current_node_border: Color;
+
+  edge: Color;
+  edge_hover: Color;
+  edge_active: Color;
+
+  font_face: string
+
+  node_font_size: number;
+  node_font: string,
+  node_font_bold: string,
+
+  edge_font_size: number;
+  edge_font: string,
+  edge_font_bold: string,
+};
+
+function getGraphTheme(): GraphTheme {
+  function cssVar(name: string, fallback = ""): string {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim() || fallback;
+  }
+
+  if (_graphTheme) return _graphTheme;
+
+  _graphTheme = {
+    bg_0: cssVar("--graph-bg-0"),
+    bg_1: cssVar("--graph-bg-1"),
+    bg_2: cssVar("--graph-bg-2"),
+    fg_0: cssVar("--graph-fg-0"),
+    fg_1: cssVar("--graph-fg-1"),
+    fg_2: cssVar("--graph-fg-2"),
+
+    node_anchor: cssVar("--graph-node-anchor"),
+    node_border: cssVar("--graph-node-border"),
+    current_node_border: cssVar("--graph-current-node-border"),
+
+    edge: cssVar("--graph-edge"),
+    edge_hover: cssVar("--graph-edge-hover"),
+    edge_active: cssVar("--graph-edge-active"),
+
+    font_face: cssVar("--graph-font"),
+
+    node_font_size: Number(cssVar("--graph-node-font-size")),
+    node_font: `${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
+    node_font_bold: `bold ${cssVar("--graph-node-font-size")}px ${cssVar("--graph-font")}`,
+
+    edge_font_size: Number(cssVar("--graph-edge-font-size")),
+    edge_font: `${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
+    edge_font_bold: `bold ${Number(cssVar("--graph-edge-font-size"))}px ${cssVar("--graph-font")}`,
+  };
+
+  return _graphTheme;
+}
+
+function updateGraphTheme() {
+  const gt = getGraphTheme();
+
+  network.setOptions({
+    nodes: {
+      labelHighlightBold: false,
+      font: {
+        color: gt.fg_0,
+        bold: {
+          color: gt.fg_1,
+        },
+      },
+    },
+    edges: {
+      labelHighlightBold: true,
+      font: {
+        align: "top",
+        face: gt.font_face,
+        size: gt.edge_font_size,
+        color: gt.fg_0,
+        strokeColor: gt.bg_0,
+        bold: {
+          color: gt.fg_1,
+          face: gt.font_face,
+          size: gt.edge_font_size,
+          mod: "bold",
+        },
+      },
+      color: {
+        color: gt.edge,
+        hover: gt.edge_hover,
+        highlight: gt.edge_active,
+      },
+      shadow: {
+        enabled: false,
+      },
+    },
+  });
+
+  network.redraw();
+}
+
+
+let _measureCanvas: HTMLCanvasElement | null = null;
+
+function measureTextWidth(text: string, font: string): number {
+  if (!_measureCanvas) {
+    _measureCanvas = document.createElement("canvas");
+  }
+
+  const ctx = _measureCanvas.getContext("2d")!;
+  ctx.font = font;
+
+  return ctx.measureText(text).width;
 }
 
 function chosen_edge(
@@ -216,7 +254,7 @@ function chosen_node(
 ) {
 }
 
-export const network: vis.Network = createGraph();
+const network: vis.Network = createGraph();
 
 function createGraph(): vis.Network {
   const container = document.getElementById("graph")!;
@@ -278,6 +316,7 @@ function createGraph(): vis.Network {
   return network;
 }
 
+
 function renderNode({
   ctx,
   id,
@@ -296,7 +335,7 @@ function renderNode({
       const isFinal = automaton.final_states
         ? automaton.final_states.has(id)
         : false;
-      const isActive = sim?sim.current_states.has(id):false;
+      const isActive = simulation?simulation.current_states.has(id):false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
       const stroke = isActive ? t.current_node_border : t.node_border;
@@ -339,7 +378,7 @@ function renderNode({
       }
 
       if (isActive) {
-        const paths = sim?.current_states.get(id)!;
+        const paths = simulation?.current_states.get(id)!;
         const padX = 8;
         const padY = 6;
         const lineH = 14;

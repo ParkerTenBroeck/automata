@@ -152,8 +152,8 @@ pub struct Graph<'a> {
 #[wasm_bindgen(getter_with_clone)]
 pub struct CompileResult {
     pub log: Vec<CompileLog>,
-    pub log_formatted: String,
-    pub graph: Option<String>,
+    pub ansi_log: String,
+    pub machine: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -161,10 +161,10 @@ pub fn compile(input: &str) -> CompileResult {
     let mut ctx = Context::new(input);
     let result = automata::loader::parse_universal(&mut ctx);
 
-    let graph = result.map(|result| serde_json::to_string(&result).unwrap());
+    let machine = result.map(|result| serde_json::to_string(&result).unwrap());
 
     use std::fmt::Write;
-    let log_formatted = ctx.logs_display().fold(String::new(), |mut s, e| {
+    let ansi_log = ctx.logs_display().fold(String::new(), |mut s, e| {
         write!(&mut s, "{e}").unwrap();
         s
     });
@@ -190,7 +190,7 @@ pub fn compile(input: &str) -> CompileResult {
 
     CompileResult {
         log,
-        log_formatted,
-        graph,
+        ansi_log,
+        machine,
     }
 }

@@ -1,4 +1,4 @@
-import { updateGraphTheme } from "./visualizer.ts";
+import { bus } from "./bus.ts";
 
 const themeBtn = document.getElementById("themeToggle") as HTMLButtonElement;
 
@@ -22,19 +22,17 @@ function setTheme(theme: Theme) {
 
   // update button label
   themeBtn.textContent = theme === "dark" ? "🌙 Dark" : "☀️ Light";
-  updateGraphTheme();
+  
+  bus.emit("theme/update", undefined);
 }
 
-
-setTheme(getPreferredTheme());
+bus.on("begin", _ => setTheme(getPreferredTheme()))
 
 themeBtn.addEventListener("click", toggleTheme);
 function toggleTheme() {
   const current = (document.documentElement.dataset.theme as Theme) || "dark";
   setTheme(current === "dark" ? "light" : "dark");
 }
-
-
 
 globalThis.window.matchMedia?.("(prefers-color-scheme: light)")
   ?.addEventListener("change", () => {
