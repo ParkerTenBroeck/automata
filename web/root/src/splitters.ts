@@ -63,7 +63,7 @@ function setFlexFill(pane: HTMLElement) {
   pane.style.flex = "1 1 auto";
 }
 
-export function enableFlexSplitters() {
+function enableFlexSplitters() {
   // Horizontal: A | hSplit | B (top/split/bottom)
   for (const splitter of document.querySelectorAll<HTMLElement>(".hSplit:not(.styleOnly)")) {
     const parent = splitter.parentElement as HTMLElement | null;

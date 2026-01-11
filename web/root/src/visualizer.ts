@@ -1,13 +1,119 @@
 // deno-lint-ignore-file no-unversioned-import
-
 // deno-lint-ignore no-import-prefix
 import * as vis from "npm:vis-network/standalone";
-import { StateEffect } from "npm:@codemirror/state";
-import { Machine } from "./automata.ts";
-import { getText } from "./editor.ts";
 
-export const nodes = new vis.DataSet<vis.Node>();
-export const edges = new vis.DataSet<vis.Edge>();
+import { bus } from "./bus.ts";
+import type { Sim } from "./simulation.ts";
+import type { Machine } from "./automata.ts";
+
+
+bus.on("controls/physics", ({enabled}) => {
+  network.setOptions({ physics: { enabled } });
+  network.setOptions({edges: {smooth: enabled}});
+});
+bus.on("controls/reset_network", _ => {
+    try {
+        nodes.forEach((n) => {
+          n.physics = true;
+          n.x = undefined;
+          n.y = undefined;
+        });
+        network.setData({ nodes, edges });
+    } catch {
+      // Last resort
+      network.setData({ nodes, edges });
+    }
+});
+
+bus.on("automata/sim/after_step", _ => {
+  network.redraw();
+});
+
+let simulation: Sim | null = null;
+bus.on("automata/sim/update", ({simulation: sim}) => {
+  simulation = sim;
+  network.redraw();
+});
+
+let automaton: Machine
+
+bus.on("automata/update", ({automaton: auto}) => {
+  automaton = auto;
+  // Populate nodes
+  for (const state of automaton.states.keys()) {
+    
+    const size = measureTextWidth(state, getGraphTheme().node_font)/2+10
+    if (nodes.get(state)) {
+      nodes.update({
+        id: state,
+        label: state,
+        size
+      });
+    } else {
+      nodes.add({
+        id: state,
+        label: state,
+        size
+      });
+    }
+  }
+
+  // Populate edges
+  for (const [edge_id, transitions] of automaton.edges) {
+    const to_from = edge_id.split("#");
+    const vadjust = -getGraphTheme().edge_font_size *
+        Math.floor(transitions.length / 2);
+    const font = {
+      vadjust,
+        bold: {
+          vadjust
+        }
+    };    
+    if (edges.get(edge_id)) {
+      edges.update({
+        id: edge_id,
+        font,
+        from: to_from[0],
+        to: to_from[1],
+        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
+      });
+    } else {
+      edges.add({
+        id: edge_id,
+        font,
+        from: to_from[0],
+        to: to_from[1],
+        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
+      });
+    }
+  }
+
+  // delete old edges
+  for (const edge_id of edges.getIds()) {
+    if (!automaton.edges.has(edge_id as string)) {
+      edges.remove(edge_id);
+    }
+  }
+
+  // delete old nodes
+  for (const node_id of nodes.getIds()) {
+    if (!automaton.states.has(node_id as string)) {
+      nodes.remove(node_id);
+    }
+  }
+});
+
+
+const nodes = new vis.DataSet<vis.Node>();
+const edges = new vis.DataSet<vis.Edge>();
+
+
+let _graphTheme: GraphTheme | null = null;
+bus.on("theme/update", _ => {
+  _graphTheme = null;
+  updateGraphTheme()
+});
+
 
 type Color = string;
 type GraphTheme = {
@@ -36,12 +142,6 @@ type GraphTheme = {
   edge_font: string,
   edge_font_bold: string,
 };
-
-let _graphTheme: GraphTheme | null = null;
-
-function invalidateGraphThemeCache() {
-  _graphTheme = null;
-}
 
 function getGraphTheme(): GraphTheme {
   function cssVar(name: string, fallback = ""): string {
@@ -82,8 +182,7 @@ function getGraphTheme(): GraphTheme {
   return _graphTheme;
 }
 
-export function updateGraphTheme() {
-  invalidateGraphThemeCache();
+function updateGraphTheme() {
   const gt = getGraphTheme();
 
   network.setOptions({
@@ -122,37 +221,13 @@ export function updateGraphTheme() {
     },
   });
 
-  setAutomaton(automaton)
-}
-
-let automaton: Machine = {
-  type: "fa",
-  alphabet: new Map(),
-  final_states: new Map(),
-  initial_state: "",
-  states: new Map(),
-  transitions: new Map(),
-  transitions_components: new Map(),
-  edges: new Map(),
-};
-
-export function clearAutomaton() {
-  automaton = {
-    type: "fa",
-    alphabet: new Map(),
-    final_states: new Map(),
-    initial_state: "",
-    states: new Map(),
-    transitions: new Map(),
-    transitions_components: new Map(),
-    edges: new Map(),
-  };
+  network.redraw();
 }
 
 
 let _measureCanvas: HTMLCanvasElement | null = null;
 
-export function measureTextWidth(text: string, font: string): number {
+function measureTextWidth(text: string, font: string): number {
   if (!_measureCanvas) {
     _measureCanvas = document.createElement("canvas");
   }
@@ -161,71 +236,6 @@ export function measureTextWidth(text: string, font: string): number {
   ctx.font = font;
 
   return ctx.measureText(text).width;
-}
-
-export function setAutomaton(auto: Machine) {
-  automaton = auto;
-
-  // Populate nodes
-  for (const state of automaton.states.keys()) {
-    
-    const size = measureTextWidth(state, getGraphTheme().node_font)/2+10
-    if (nodes.get(state)) {
-      nodes.update({
-        id: state,
-        label: state,
-        size
-      });
-    } else {
-      nodes.add({
-        id: state,
-        label: state,
-        size
-      });
-    }
-  }
-
-  // Populate edges
-  for (const [edge_id, transitions] of auto.edges) {
-    const to_from = edge_id.split("#");
-    const vadjust = -getGraphTheme().edge_font_size *
-        Math.floor(transitions.length / 2);
-    const font = {
-      vadjust,
-        bold: {
-          vadjust
-        }
-    };    
-    if (edges.get(edge_id)) {
-      edges.update({
-        id: edge_id,
-        font,
-        from: to_from[0],
-        to: to_from[1],
-        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
-      });
-    } else {
-      edges.add({
-        id: edge_id,
-        font,
-        from: to_from[0],
-        to: to_from[1],
-        label: transitions.map(i => i.repr).join(auto.type=="fa"?",":"\n"),
-      });
-    }
-  }
-
-  for (const edge_id of edges.getIds()) {
-    if (!auto.edges.has(edge_id as string)) {
-      edges.remove(edge_id);
-    }
-  }
-
-  for (const node_id of nodes.getIds()) {
-    if (!auto.states.has(node_id as string)) {
-      nodes.remove(node_id);
-    }
-  }
 }
 
 function chosen_edge(
@@ -244,7 +254,7 @@ function chosen_node(
 ) {
 }
 
-export const network: vis.Network = createGraph();
+const network: vis.Network = createGraph();
 
 function createGraph(): vis.Network {
   const container = document.getElementById("graph")!;
@@ -306,6 +316,7 @@ function createGraph(): vis.Network {
   return network;
 }
 
+
 function renderNode({
   ctx,
   id,
@@ -324,7 +335,7 @@ function renderNode({
       const isFinal = automaton.final_states
         ? automaton.final_states.has(id)
         : false;
-      const isActive = false;
+      const isActive = simulation?simulation.current_states.has(id):false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
       const stroke = isActive ? t.current_node_border : t.node_border;
@@ -366,34 +377,33 @@ function renderNode({
         drawInitialArrow(ctx, x, y, r, t.edge);
       }
 
-      // const badgeText = "bleh\npee";
-      // if (badgeText) {
-      //   const lines = badgeText.split("\n").slice(0, 3);
-      //   const padX = 8;
-      //   const padY = 6;
-      //   const lineH = 14;
+      if (isActive) {
+        const paths = simulation?.current_states.get(id)!;
+        const padX = 8;
+        const padY = 6;
+        const lineH = 14;
 
-      //   let w = 0;
-      //   for (const ln of lines) w = Math.max(w, ctx.measureText(ln).width);
-      //   const boxW = w + padX * 2;
-      //   const boxH = lines.length * lineH + padY * 2;
+        let w = 0;
+        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.toString()).width);
+        const boxW = w + padX * 2;
+        const boxH = paths.length * lineH + padY * 2;
 
-      //   const bx = x - boxW / 2;
-      //   const by = y - r - 12 - boxH;
+        const bx = x - boxW / 2;
+        const by = y - r - 12 - boxH;
 
-      //   ctx.fillStyle = t.bg_1;
-      //   ctx.strokeStyle = t.bg_2;
-      //   ctx.lineWidth = 1;
-      //   roundRect(ctx, bx, by, boxW, boxH, 8);
-      //   ctx.fill();
-      //   ctx.stroke();
+        ctx.fillStyle = t.bg_1;
+        ctx.strokeStyle = t.bg_2;
+        ctx.lineWidth = 1;
+        roundRect(ctx, bx, by, boxW, boxH, 8);
+        ctx.fill();
+        ctx.stroke();
 
-      //   ctx.fillStyle = t.fg_0;
-      //   ctx.textBaseline = "top";
-      //   for (let i = 0; i < lines.length; i++) {
-      //     ctx.fillText(lines[i], x, by + padY + i * lineH);
-      //   }
-      // }
+        ctx.textBaseline = "top";
+        for (let i = 0; i < paths.length; i++) {
+          ctx.fillStyle = paths[i].accepted?t.current_node_border:t.fg_0;
+          ctx.fillText(paths[i].toString(), x, by + padY + i * lineH);
+        }
+      }
 
       const node: vis.Node = nodes.get(id)!;
       const physicsOff = node.physics === false;

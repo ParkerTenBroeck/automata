@@ -1,6 +1,6 @@
 export type Machine = Fa | Pda | Tm;
 
-export function machine_from_json(json: string): Machine {
+export function parse_machine_from_json(json: string): Machine {
   const machine: Machine = JSON.parse(json);
   machine.states = new Map(Object.entries(machine.states));
 
@@ -26,16 +26,16 @@ export function machine_from_json(json: string): Machine {
         for (const [from, tos] of machine.transitions) {
           for (const to of tos) {
             const layer_0 = machine.transitions_components;
-            if(!layer_0.has(from.state)) layer_0.set(from.state, new Map());
+            if (!layer_0.has(from.state)) layer_0.set(from.state, new Map());
             const layer_1 = machine.transitions_components.get(from.state)!;
-            if(!layer_1.has(from.letter)) layer_1.set(from.letter, []);
+            if (!layer_1.has(from.letter)) layer_1.set(from.letter, []);
             const layer_2 = layer_1.get(from.letter)!;
             layer_2.push(to);
 
             const edge = from.state + "#" + to.state;
             if (!machine.edges.has(edge)) machine.edges.set(edge, []);
             machine.edges.get(edge)?.push({
-              repr: from.letter?from.letter:"ε",
+              repr: from.letter ? from.letter : "ε",
               function: to.function,
               transition: to.transition,
             });
@@ -49,18 +49,19 @@ export function machine_from_json(json: string): Machine {
         for (const [from, tos] of machine.transitions) {
           for (const to of tos) {
             const layer_0 = machine.transitions_components;
-            if(!layer_0.has(from.state)) layer_0.set(from.state, new Map());
+            if (!layer_0.has(from.state)) layer_0.set(from.state, new Map());
             const layer_1 = machine.transitions_components.get(from.state)!;
-            if(!layer_1.has(from.symbol)) layer_1.set(from.symbol, new Map());
+            if (!layer_1.has(from.symbol)) layer_1.set(from.symbol, new Map());
             const layer_2 = layer_1.get(from.symbol)!;
-            if(!layer_2.has(from.letter)) layer_2.set(from.letter, []);
+            if (!layer_2.has(from.letter)) layer_2.set(from.letter, []);
             const layer_3 = layer_2.get(from.letter)!;
             layer_3.push(to);
 
             const edge = from.state + "#" + to.state;
             if (!machine.edges.has(edge)) machine.edges.set(edge, []);
             machine.edges.get(edge)?.push({
-              repr: (from.letter?from.letter:"ε")+","+from.symbol+"->["+to.stack+"]",
+              repr: (from.letter ? from.letter : "ε") + "," + from.symbol +
+                "->[" + to.stack + "]",
               function: to.function,
               transition: to.transition,
             });
@@ -74,16 +75,16 @@ export function machine_from_json(json: string): Machine {
         for (const [from, tos] of machine.transitions) {
           for (const to of tos) {
             const layer_0 = machine.transitions_components;
-            if(!layer_0.has(from.state)) layer_0.set(from.state, new Map());
+            if (!layer_0.has(from.state)) layer_0.set(from.state, new Map());
             const layer_1 = machine.transitions_components.get(from.state)!;
-            if(!layer_1.has(from.symbol)) layer_1.set(from.symbol, []);
+            if (!layer_1.has(from.symbol)) layer_1.set(from.symbol, []);
             const layer_2 = layer_1.get(from.symbol)!;
             layer_2.push(to);
 
             const edge = from.state + "#" + to.state;
             if (!machine.edges.has(edge)) machine.edges.set(edge, []);
             machine.edges.get(edge)?.push({
-              repr: from.symbol+"->"+to.symbol+","+to.direction,
+              repr: from.symbol + "->" + to.symbol + "," + to.direction,
               function: to.function,
               transition: to.transition,
             });
@@ -107,7 +108,7 @@ export type SymbolInfo = { definition: Span };
 
 export type FaTransFrom = {
   state: State;
-  letter: Letter|null;
+  letter: Letter | null;
 };
 
 export type FaTransTo = {
@@ -132,14 +133,14 @@ export type Fa = {
   final_states: Map<State, StateInfo>;
 
   transitions: Map<FaTransFrom, FaTransTo[]>;
-  transitions_components: Map<State, Map<Letter|null, FaTransTo[]>>;
+  transitions_components: Map<State, Map<Letter | null, FaTransTo[]>>;
 
   edges: Map<string, Edge[]>;
 };
 
 export type PdaTransFrom = {
   state: State;
-  letter: Letter|null;
+  letter: Letter | null;
   symbol: Symbol;
 };
 
@@ -162,7 +163,10 @@ export type Pda = {
   final_states: Map<State, StateInfo> | null;
 
   transitions: Map<PdaTransFrom, PdaTransTo[]>;
-  transitions_components: Map<State, Map<Symbol, Map<Letter|null, PdaTransTo[]>>>;
+  transitions_components: Map<
+    State,
+    Map<Symbol, Map<Letter | null, PdaTransTo[]>>
+  >;
 
   edges: Map<string, Edge[]>;
 };
@@ -196,13 +200,3 @@ export type Tm = {
 
   edges: Map<string, Edge[]>;
 };
-
-
-export type FaState = {
-  state: State,
-  position: number
-}
-
-export class FaSim{
-
-}

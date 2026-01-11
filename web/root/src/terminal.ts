@@ -1,10 +1,14 @@
-// deno-lint-ignore-file
+import { bus } from "./bus.ts";
 
-import {
-  ViewPlugin,
-} from "npm:@codemirror/view";
+bus.on("compiled", ({log, ansi_log}) => {
+  const term = document.getElementById("terminal");
+  if (!term) return;
 
-import { analysisField } from "./editor.ts";
+  let s = "";
+  s += `\x1b[90m[compile]\x1b[0m ${log.length} diagnostics\n`;
+
+  term.innerHTML = ansiToHtml(s + ansi_log);
+})
 
 function escapeHtml(s: string) {
   return s
@@ -78,32 +82,3 @@ function ansiToHtml(input: string) {
   out += openSpanIfNeeded(input.slice(lastIndex));
   return out;
 }
-
-  // @ts-expect-error bad library
-function formatTerminal(view) {
-  const term = document.getElementById("terminal");
-  if (!term) return;
-
-  const { log, log_formatted } = view.state.field(analysisField);
-
-  let s = "";
-  s += `\x1b[90m[compile]\x1b[0m ${log.length} diagnostics\n`;
-
-  term.innerHTML = ansiToHtml(s + log_formatted);
-}
-
-export const terminalPlugin = ViewPlugin.fromClass(
-  class {
-
-    // @ts-expect-error bad library
-    constructor(view) {
-    // @ts-expect-error bad library
-      this.view = view;
-      formatTerminal(view);
-    }
-    // @ts-expect-error bad library
-    update(update) {
-      if (update.docChanged) formatTerminal(update.view);
-    }
-  }
-);

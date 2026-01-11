@@ -10,9 +10,9 @@ export type Category =
   | "NTM";
 
 export class Example {
-  category: Category;
-  title: string;
-  machine: string;
+  readonly category: Category;
+  readonly title: string;
+  readonly machine: string;
 
   constructor(category: Category, title: string, machine: string) {
     this.category = category;
@@ -21,7 +21,7 @@ export class Example {
   }
 }
 
-export const examples: Example[] = [
+export const examples: readonly Example[] = [
   new Example(
     "Tutorial",
     "DFA",
@@ -104,9 +104,40 @@ d(qeq, b, z0) = (qmb, z0)
 d(qmb, b, z0) = (qmb, z0)`,
   ),
 
+
   new Example(
     "NPDA",
-    "unequal",
+    "palindrome",
+    `type=NPDA
+Q = {q0, q1} // states
+E = {a, b} // alphabet
+T = {z0, A, B} // stack
+q0 = q0
+z0 = z0
+
+// push letters we see to stack
+d(q0, a, z0)  =   (q0, [A z0])
+d(q0, b, z0)  =   (q0, [B z0])
+
+d(q0, a, A)  =   (q0, [A A])
+d(q0, b, A)  =   (q0, [B A])
+
+d(q0, a, B)  =   (q0, [A B])
+d(q0, b, B)  =   (q0, [B B])
+
+// transition to q1
+d(q0, epsilon, z0)  =   { (q1, z0) }
+d(q0, epsilon, A)   =   { (q1, A)  }
+d(q0, epsilon, B)   =   { (q1, B)  }
+
+// consume stack until empty
+d(q1, a, A)         =   { (q1, epsilon) }
+d(q1, b, B)         =   { (q1, epsilon) }`,
+  ),
+
+  new Example(
+    "NPDA",
+    "kleen star stack",
     `type=NPDA
 Q = {q0, q1} // states
 E = {a, b} // alphabet
@@ -143,7 +174,7 @@ const CATEGORY_ORDER: Category[] = [
 
 function buildExamplesDropdown(
   selectEl: HTMLSelectElement,
-  examples: Example[],
+  examples: readonly Example[],
   onPick?: (ex: Example) => void,
 ) {
   // Clear everything except the first placeholder option (if present)
