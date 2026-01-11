@@ -2,10 +2,9 @@ use std::collections::HashSet;
 
 use super::*;
 
-use crate::loader::{
-    Context, DELTA_LOWER, GAMMA_UPPER, SIGMA_UPPER, Spanned,
-    ast::{self, Symbol as Sym},
-};
+use crate::{delta_lower, gamma_upper, loader::{
+    BLANK_SYMBOL, Context, Spanned, ast::{self, Symbol as Sym}, log::LogSink
+}};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -118,7 +117,7 @@ impl<'a> Tm<'a> {
                         }
                     }
                 }
-                TL::Item(S("T" | GAMMA_UPPER | "gamma", _), list) => {
+                TL::Item(S(gamma_upper!(pat), _), list) => {
                     if !symbols.is_empty() {
                         ctx.emit_error("tape symbols already set", span);
                     }
@@ -142,7 +141,7 @@ impl<'a> Tm<'a> {
                         ctx.emit_error("tape symbols cannot be empty", span);
                     }
                 }
-                TL::Item(S("I" | "q0", _), S(src, src_d)) => match src {
+                TL::Item(S("q0", _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_state.is_some() {
                             ctx.emit_error("initial state already set", span);
@@ -153,9 +152,9 @@ impl<'a> Tm<'a> {
                             ctx.emit_error("initial state symbol not defined as a state", src_d);
                         }
                     }
-                    _ => ctx.emit_error("expected ident", src_d),
+                    _ => _ = ctx.emit_error("expected ident", src_d),
                 },
-                TL::Item(S("S" | "z0", _), S(src, src_d)) => match src {
+                TL::Item(S(BLANK_SYMBOL, _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_tape.is_some() {
                             ctx.emit_error("initial tape symbol already set", span);
@@ -169,13 +168,13 @@ impl<'a> Tm<'a> {
                             );
                         }
                     }
-                    _ => ctx.emit_error("expected ident", src_d),
+                    _ => _ = ctx.emit_error("expected ident", src_d),
                 },
                 TL::Item(S(name, dest_s), _) => {
-                    ctx.emit_error(format!("unknown item {name:?}, expected 'Q' | 'E' | '{SIGMA_UPPER}' | 'sigma' | 'F' | 'T' | '{GAMMA_UPPER}' | 'gamma' | 'I' | 'q0' | 'S' | 'z0'"), dest_s);
+                    ctx.emit_error(format!("unknown item {name:?}, expected states, symbols, final states, initial state, blank symbol"), dest_s);
                 }
 
-                TL::TransitionFunc(S((S("d" | DELTA_LOWER | "delta", _), tuple), _), list) => {
+                TL::TransitionFunc(S((S(delta_lower!(pat), _), tuple), _), list) => {
                     let list = list.set_weak();
                     let Some((from_state, from_tape)) =
                         tuple.as_ref().expect_tm_transition_function(ctx)
@@ -229,9 +228,9 @@ impl<'a> Tm<'a> {
                     }
                 }
                 TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
-                    ctx.emit_error(
+                 ctx.emit_error(
                         format!(
-                            "unknown function {name:?}, expected 'd' | 'delta' | '{DELTA_LOWER}'"
+                            "unknown function {name:?}, expected transition function ( {} )", delta_lower!(str)
                         ),
                         dest_s,
                     );
@@ -240,7 +239,7 @@ impl<'a> Tm<'a> {
                 TL::ProductionRule(_, _) => {
                     ctx.emit_error("unexpected production rule", span);
                 }
-                TL::Table() => ctx.emit_error("unexpected table", span),
+                TL::Table() => _ = ctx.emit_error("unexpected table", span),
             }
         }
 
@@ -303,7 +302,7 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
             ] => {
                 return Some((Spanned(state, *state_span), Spanned(*tape, *tape_span)));
             }
-            _ => ctx.emit_error("expected TM transition function (ident, ident)", self.1),
+            _ => _ = ctx.emit_error("expected TM transition function (state, symbol)", self.1),
         }
         None
     }
@@ -321,7 +320,7 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
                 let direction = match direction {
                     ast::Symbol::Ident("left" | "L" | "<") => Direction::Left,
                     ast::Symbol::Ident("right" | "R" | ">") => Direction::Right,
-                    ast::Symbol::Epsilon | ast::Symbol::Ident("~") => Direction::None,
+                    ast::Symbol::Epsilon(_) | ast::Symbol::Ident("~") => Direction::None,
                     ast::Symbol::Ident(ident) => {
                         ctx.emit_error(
                             format!("invalid direction specified '{ident}'"),
@@ -336,8 +335,8 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
                     Spanned(direction, *direction_span),
                 ));
             }
-            _ => ctx.emit_error(
-                "expected TM transition function (ident, ident, ident)",
+            _ => _ = ctx.emit_error(
+                "expected TM transition function (state, symbol, direction)",
                 self.1,
             ),
         }

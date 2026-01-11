@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use automata::loader::{self, Context, Span, Spanned, lexer::Lexer};
+use automata::{
+    delta_lower, epsilon, gamma_upper,
+    loader::{self, Context, Span, Spanned, lexer::Lexer},
+    sigma_upper,
+};
 
 use serde::Serialize;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -88,16 +92,11 @@ pub fn lex(input: &str) -> Vec<Tok> {
                 {
                     Kind::Keyword
                 }
+
+                // ugly hack to keep single ascii letters non keyworded for user
+                Token::Ident(ident) if ident.is_ascii() && ident.len()==1 => Kind::Ident,
                 Token::Ident(
-                    loader::EPSILON_LOWER
-                    | "epsilon"
-                    | loader::DELTA_LOWER
-                    | "delta"
-                    | loader::GAMMA_UPPER
-                    | "gamma"
-                    | loader::GAMMA_LOWER
-                    | loader::SIGMA_UPPER
-                    | "sigma",
+                    epsilon!(pat) | delta_lower!(pat) | sigma_upper!(pat) | gamma_upper!(pat),
                 ) => Kind::Keyword,
                 Token::Ident(_) => Kind::Ident,
                 Token::LineEnd => Kind::Punc,
@@ -127,6 +126,7 @@ pub fn lex(input: &str) -> Vec<Tok> {
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum LogLevel {
+    Help = "help",
     Info = "info",
     Warning = "warning",
     Error = "error",
@@ -165,7 +165,7 @@ pub fn compile(input: &str) -> CompileResult {
 
     use std::fmt::Write;
     let ansi_log = ctx.logs_display().fold(String::new(), |mut s, e| {
-        write!(&mut s, "{e}").unwrap();
+        writeln!(&mut s, "{e}").unwrap();
         s
     });
 
@@ -174,6 +174,7 @@ pub fn compile(input: &str) -> CompileResult {
         .into_entries()
         .map(|e| CompileLog {
             level: match e.level {
+                loader::log::LogLevel::Help => LogLevel::Help,
                 loader::log::LogLevel::Info => LogLevel::Info,
                 loader::log::LogLevel::Warning => LogLevel::Warning,
                 loader::log::LogLevel::Error => LogLevel::Error,

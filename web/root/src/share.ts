@@ -1,41 +1,49 @@
-import { getText } from "./editor.ts";
+import { bus } from "./bus.ts";
 
-const btn = document.getElementById("shareBtn")!;
-const toast = document.getElementById("shareToast")!;
+export class Share {
+  private static readonly btn: HTMLButtonElement = document.getElementById(
+    "shareBtn",
+  )! as HTMLButtonElement;
+  private static readonly toast: HTMLElement = document.getElementById(
+    "shareToast",
+  )!;
 
-function generateShareLink() {
-  return `${globalThis.window.location.href}?share=${encodeURIComponent(btoa(getText()))}`;
-}
+  private static docText: string;
+  private static shareText: string;
 
-async function copy(text: string) {
-  await navigator.clipboard.writeText(text);
-}
+  static {
+    bus.on("editor/change", ({ text }) => Share.docText = text);
 
-btn.addEventListener("click", async () => {
-  await copy(generateShareLink());
+    Share.btn.onclick = async (_) => {
+      const link = `${globalThis.window.location.href}?share=${
+        encodeURIComponent(btoa(Share.docText))
+      }`;
+      await navigator.clipboard.writeText(link);
 
-  toast.classList.remove("show");
-  void toast.offsetWidth; 
-  toast.classList.add("show");
-});
+      Share.toast.classList.remove("show");
+      void Share.toast.offsetWidth;
+      Share.toast.classList.add("show");
+    };
 
-
-export function sharedText(): string|null {
-  try{
-    const url = new URL(globalThis.window.location.href);
-    let text: string | null = url.searchParams.get("share");
-    if (text !== null) {
-      text = atob(text);
-      url.searchParams.delete("share");
-      globalThis.window.history.replaceState(
-        {},
-        document.title,
-        url.pathname + url.search + url.hash
-      );
+    try {
+      const url = new URL(globalThis.window.location.href);
+      let text: string | null = url.searchParams.get("share");
+      if (text !== null) {
+        text = atob(text);
+        url.searchParams.delete("share");
+        globalThis.window.history.replaceState(
+          {},
+          document.title,
+          url.pathname + url.search + url.hash,
+        );
+        Share.shareText = text;
+      }
+    } catch (e) {
+      console.log(e);
     }
-    return text;
-  }catch(e){
-    console.log(e)
   }
-  return null;
+
+  public static sharedText(): string | null {
+    return Share.shareText;
+  }
 }

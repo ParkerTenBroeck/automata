@@ -16,7 +16,7 @@ pub struct Tuple<'a>(pub Vec<Spanned<Item<'a>>>);
 
 #[derive(Clone, Copy, Debug)]
 pub enum Symbol<'a> {
-    Epsilon,
+    Epsilon(&'a str),
     Ident(&'a str),
 }
 
@@ -62,14 +62,14 @@ pub enum TopLevel<'a> {
     Table(),
 }
 
-use crate::loader::Context;
+use crate::loader::{Context, log::LogSink};
 
 impl<'a> Spanned<Item<'a>> {
     pub fn expect_symbol(&self, ctx: &mut Context<'a>) -> Option<Symbol<'a>> {
         match &self.0 {
             Item::Symbol(sym) => return Some(*sym),
-            Item::Tuple(_) => ctx.emit_error("expected ident found tuple", self.1),
-            Item::List(_) => ctx.emit_error("expected ident found list", self.1),
+            Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
+            Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
         }
         None
     }
@@ -77,18 +77,18 @@ impl<'a> Spanned<Item<'a>> {
     pub fn expect_ident(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(ident)) => return Some(ident),
-            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected ident found epsilon", self.1),
-            Item::Tuple(_) => ctx.emit_error("expected ident found tuple", self.1),
-            Item::List(_) => ctx.emit_error("expected ident found list", self.1),
+            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected ident found epsilon", self.1),
+            Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
+            Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
         }
         None
     }
 
     pub fn expect_set(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected set found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected set found epsilon", self.1),
-            Item::Tuple(_) => ctx.emit_error("expected set found tuple", self.1),
+            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected set found ident", self.1),
+            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected set found epsilon", self.1),
+            Item::Tuple(_) => _ = ctx.emit_error("expected set found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
@@ -96,9 +96,9 @@ impl<'a> Spanned<Item<'a>> {
 
     pub fn expect_list(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected list found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected list found epsilon", self.1),
-            Item::Tuple(_) => ctx.emit_error("expected list found tuple", self.1),
+            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected list found ident", self.1),
+            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected list found epsilon", self.1),
+            Item::Tuple(_) => _ = ctx.emit_error("expected list found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
@@ -120,10 +120,10 @@ impl<'a> Spanned<Item<'a>> {
 
     pub fn expect_tuple(&self, ctx: &mut Context<'a>) -> Option<Spanned<&Tuple<'a>>> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => ctx.emit_error("expected tuple found ident", self.1),
-            Item::Symbol(Symbol::Epsilon) => ctx.emit_error("expected tuple found epsilon", self.1),
+            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected tuple found ident", self.1),
+            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected tuple found epsilon", self.1),
             Item::Tuple(tuple) => return Some(Spanned(tuple, self.1)),
-            Item::List(_) => ctx.emit_error("expected tuple found list", self.1),
+            Item::List(_) => _ = ctx.emit_error("expected tuple found list", self.1),
         }
         None
     }

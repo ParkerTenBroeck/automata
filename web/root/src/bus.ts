@@ -1,6 +1,7 @@
 // deno-lint-ignore-file
 
 import type { Machine } from "./automata.ts";
+import type { Example } from "./examples.ts";
 import type { Sim, SimStepResult } from "./simulation.ts";
 import type wasm from "./wasm.ts";
 import type { Text } from "npm:@codemirror/state";
@@ -73,13 +74,16 @@ type AppEvents = {
   "automata/sim/after_step": { simulation: Sim, result: SimStepResult };
   "automata/update": { automaton: Machine };
 
-  "controls/physics": {enabled: boolean},
-  "controls/reset_network": void,
-  
+  "example/selected": {example: Example};
 
-  "controls/step_simulation": void,
-  "controls/reload_simulation": void,
-  "controls/clear_simulation": void,
+  "controls/editor/set_text": {text: string};
+  
+  "controls/vis/physics": {enabled: boolean};
+  "controls/vis/reset_network": void;
+  
+  "controls/sim/step": void;
+  "controls/sim/reload": void;
+  "controls/sim/clear": void;
 
   "theme/update": void;
 };

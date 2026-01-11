@@ -1,23 +1,67 @@
-use crate::{automatan::*, loader::ast::TopLevel};
+use crate::{
+    automatan::*,
+    loader::{
+        ast::TopLevel,
+        log::{LogEntry, LogSink},
+    },
+};
 
 pub mod ast;
 pub mod lexer;
 pub mod log;
 pub mod parser;
 
-pub const EPSILON_LOWER: &str = "Ɛ";
-pub const EPSILON_LOWER_MATH: &str = "𝛆";
-pub const DELTA_LOWER: &str = "δ";
-pub const SIGMA_UPPER: &str = "Σ";
-pub const GAMMA_UPPER: &str = "Γ";
-pub const GAMMA_LOWER: &str = "γ";
+#[macro_export]
+macro_rules! maker {
+    (pat: $($pat:pat),*) => {
+      $($pat)|*
+    };
+    (arr: $($expr:expr),*) => {
+        [$($expr),*]
+    };
+    (str: $first:literal, $($remainder:literal),+) => {
+        concat!($crate::maker!(str: $first), " | ", $crate::maker!(str: $($remainder),*))
+    };
+    (str: $first:literal) => {
+        concat!("'",$first,"'")
+    };
+}
+
+pub const INITIAL_STATE: &str = "q0";
+pub const INITIAL_STACK: &str = "z0";
+pub const BLANK_SYMBOL: &str = "B";
+
+#[macro_export]
+macro_rules! epsilon {
+    ($ident: ident) => {
+      $crate::maker!($ident: "epsilon","~", "Ɛ", "ε", "ϵ", "𝛆", "𝛜", "𝜀", "𝜖", "𝜺", "𝝐", "𝝴", "𝞊", "𝞮", "𝟄")
+    };
+}
+
+#[macro_export]
+macro_rules! delta_lower {
+    ($ident: ident) => {
+      $crate::maker!($ident: "delta","D","d","ẟ","δ", "𝛅", "𝛿", "𝜹", "𝝳", "𝞭")
+    };
+}
+
+#[macro_export]
+macro_rules! sigma_upper {
+    ($ident: ident) => {
+      $crate::maker!($ident: "E","S", "sigma","Σ","𝚺", "𝛴", "𝜮", "𝝨", "𝞢")
+    };
+}
+
+#[macro_export]
+macro_rules! gamma_upper {
+    ($ident: ident) => {
+      $crate::maker!($ident: "T","G","gamma","Γ","Ⲅ", "𝚪", "𝛤", "𝜞", "𝝘", "𝞒")
+    };
+}
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Span(
-    #[cfg_attr(feature = "serde", serde(rename = "start"))] pub usize,
-    #[cfg_attr(feature = "serde", serde(rename = "end"))] pub usize,
-);
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Span(pub usize, pub usize);
 impl Span {
     pub fn join(&self, end: Span) -> Span {
         Span(self.0, end.1)
@@ -41,6 +85,12 @@ pub struct Context<'a> {
     src: &'a str,
 }
 
+impl<'a> LogSink for Context<'a> {
+    fn emit(&mut self, entry: log::LogEntry) -> &mut LogEntry {
+        self.logs.emit(entry)
+    }
+}
+
 impl<'a> Context<'a> {
     pub fn new(src: &'a str) -> Self {
         Self {
@@ -59,30 +109,6 @@ impl<'a> Context<'a> {
 
     pub fn eof(&self) -> Span {
         Span(self.src.len(), self.src.len())
-    }
-
-    pub fn emit(&mut self, entry: log::LogEntry) {
-        self.logs.emit(entry);
-    }
-
-    pub fn emit_error_locless(&mut self, msg: impl Into<String>) {
-        self.logs.emit_error_locless(msg);
-    }
-
-    pub fn emit_error(&mut self, msg: impl Into<String>, span: Span) {
-        self.logs.emit_error(msg, span);
-    }
-
-    pub fn emit_warning(&mut self, msg: impl Into<String>, span: Span) {
-        self.logs.emit_warning(msg, span);
-    }
-
-    pub fn emit_warning_locless(&mut self, msg: impl Into<String>) {
-        self.logs.emit_warning_locless(msg);
-    }
-
-    pub fn emit_info(&mut self, msg: impl Into<String>, span: Span) {
-        self.logs.emit_info(msg, span);
     }
 
     pub fn contains_errors(&self) -> bool {
@@ -127,11 +153,13 @@ pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
                 (item.expect_ident(ctx)?, span)
             }
             Some(S(_, span)) => {
-                ctx.emit_error("expected type=<type> as first item", span);
+                ctx.emit_error("expected type=<type> as first item", span)
+                    .emit_help_logless("add: type = ...");
                 return None;
             }
             None => {
-                ctx.emit_error("expected type=<type> as first item", ctx.eof());
+                ctx.emit_error("expected type=<type> as first item", ctx.eof())
+                    .emit_help_logless("add: type = ...");
                 return None;
             }
         };
@@ -164,8 +192,8 @@ pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
     };
 
     Some(match parse_type(items.next(), ctx)? {
-        Type::Dfa => Machine::Fa(fa::Fa::parse(items, ctx, D)?),
-        Type::Nfa => Machine::Fa(fa::Fa::parse(items, ctx, N)?),
+        Type::Dfa => Machine::Fa(fa::Fa::compile(items, ctx, D)?),
+        Type::Nfa => Machine::Fa(fa::Fa::compile(items, ctx, N)?),
         Type::Dpda => Machine::Pda(pda::Pda::parse(items, ctx, D)?),
         Type::Npda => Machine::Pda(pda::Pda::parse(items, ctx, N)?),
         Type::Tm => Machine::Tm(tm::Tm::parse(items, ctx, D)?),

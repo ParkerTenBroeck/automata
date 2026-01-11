@@ -15,59 +15,6 @@ const speedLabel = document.getElementById("speedSimLabel") as HTMLSpanElement;
 const reloadSimBtn = document.getElementById("reloadSim") as HTMLButtonElement;
 const clearSimBtn = document.getElementById("clearSim") as HTMLButtonElement;
 
-bus.on("controls/physics", ({ enabled }) => {
-  togglePhysicsBtn.classList.toggle("active", enabled);
-  togglePhysicsBtn.textContent = enabled ? "Physics: ON" : "Physics: OFF";
-});
-
-togglePhysicsBtn.onclick = () => {
-  const enabled = !togglePhysicsBtn.classList.contains("active");
-  bus.emit("controls/physics", { enabled });
-};
-
-bus.emit("controls/physics", {
-  enabled: togglePhysicsBtn.classList.contains("active"),
-});
-
-resetLayoutBtn.onclick = () => bus.emit("controls/reset_network", undefined);
-
-clearSimBtn.onclick = () => bus.emit("controls/clear_simulation", undefined);
-
-stepBtn.onclick = () => {
-  bus.emit("controls/step_simulation", undefined);
-};
-
-reloadSimBtn.onclick = () => bus.emit("controls/reload_simulation", undefined);
-
-function updateButtons() {
-  stepBtn.disabled = !simulation_active || running;
-  playPauseBtn.disabled = !simulation_active;
-  clearSimBtn.disabled = !simulation_active;
-}
-
-bus.on("controls/reload_simulation", (_) => {
-  if (running) setRunning(false);
-  updateButtons();
-});
-
-bus.on("automata/sim/update", ({ simulation }) => {
-  simulation_active = !!simulation;
-  if (!simulation) {
-    if (running) setRunning(false);
-  }
-  updateButtons();
-});
-
-bus.on("automata/sim/after_step", ({ result }) => {
-  if (result !== "pending") {
-    if (running) setRunning(false);
-  }
-});
-
-let simulation_active = false;
-let running = false;
-let timer: number | null = null;
-
 // speed slider is "steps per second"
 function getStepsPerSecond() {
   return Math.max(1, Math.min(60, Number(speedSlider.value) || 10));
@@ -77,39 +24,82 @@ function updateSpeedUI() {
 }
 updateSpeedUI();
 
-speedSlider.addEventListener("input", () => {
-  updateSpeedUI();
-  if (running) restartTimer();
-});
+class Controls {
+  static simulation_active = false;
+  static running = false;
+  static timer: number | null = null;
 
-function stopTimer() {
-  if (timer !== null) {
-    clearInterval(timer);
-    timer = null;
+  static updateButtons() {
+    stepBtn.disabled = !Controls.simulation_active || Controls.running;
+    playPauseBtn.disabled = !Controls.simulation_active;
+    clearSimBtn.disabled = !Controls.simulation_active;
+  }
+  static setRunning(on: boolean) {
+    Controls.running = on;
+    playPauseBtn.textContent = Controls.running ? "⏸ Pause" : "▶ Play";
+    playPauseBtn.classList.toggle("btn-primary", !Controls.running);
+    playPauseBtn.classList.toggle("btn-secondary", Controls.running);
+
+    if (Controls.running) Controls.restartTimer();
+    else Controls.stopTimer();
+    Controls.updateButtons();
+  }
+  static stop() {
+    if (Controls.running) Controls.setRunning(false);
+  }
+  static stopTimer() {
+    if (Controls.timer !== null) {
+      clearInterval(Controls.timer);
+      Controls.timer = null;
+    }
+  }
+
+  static restartTimer() {
+    Controls.stopTimer();
+    const sps = getStepsPerSecond();
+    const intervalMs = Math.round(1000 / sps);
+
+    Controls.timer = globalThis.window.setInterval(() => {
+      bus.emit("controls/sim/step", undefined);
+    }, intervalMs);
+  }
+
+  static {
+    speedSlider.addEventListener("input", () => {
+      updateSpeedUI();
+      if (Controls.running) Controls.restartTimer();
+    });
+    playPauseBtn.onclick = () => Controls.setRunning(!Controls.running);
+    resetLayoutBtn.onclick = () =>
+      bus.emit("controls/vis/reset_network", undefined);
+    clearSimBtn.onclick = () => bus.emit("controls/sim/clear", undefined);
+    stepBtn.onclick = () => bus.emit("controls/sim/step", undefined);
+    reloadSimBtn.onclick = () => bus.emit("controls/sim/reload", undefined);
+    togglePhysicsBtn.onclick = () => {
+      const enabled = !togglePhysicsBtn.classList.contains("active");
+      bus.emit("controls/vis/physics", { enabled });
+    };
+
+    bus.on("controls/vis/physics", ({ enabled }) => {
+      togglePhysicsBtn.classList.toggle("active", enabled);
+      togglePhysicsBtn.textContent = enabled ? "Physics: ON" : "Physics: OFF";
+    });
+
+    bus.on("controls/sim/reload", (_) => {
+      if (Controls.running) Controls.setRunning(false);
+    });
+
+    bus.on("automata/sim/update", ({ simulation }) => {
+      Controls.simulation_active = !!simulation;
+      if (!simulation) Controls.stop();
+    });
+
+    bus.on("automata/sim/after_step", ({ result }) => {
+      if (result !== "pending") Controls.stop();
+    });
+
+    bus.emit("controls/vis/physics", {
+      enabled: togglePhysicsBtn.classList.contains("active"),
+    });
   }
 }
-
-function restartTimer() {
-  stopTimer();
-  const sps = getStepsPerSecond();
-  const intervalMs = Math.round(1000 / sps);
-
-  timer = globalThis.window.setInterval(() => {
-    bus.emit("controls/step_simulation", undefined);
-  }, intervalMs);
-}
-
-function setRunning(on: boolean) {
-  running = on;
-  playPauseBtn.textContent = running ? "⏸ Pause" : "▶ Play";
-  playPauseBtn.classList.toggle("btn-primary", !running);
-  playPauseBtn.classList.toggle("btn-secondary", running);
-
-  // Disable step while running (optional, but feels nice)
-  stepBtn.disabled = running;
-
-  if (running) restartTimer();
-  else stopTimer();
-}
-
-playPauseBtn.onclick = () => setRunning(!running);
