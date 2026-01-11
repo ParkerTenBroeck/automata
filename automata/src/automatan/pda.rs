@@ -2,10 +2,9 @@ use std::collections::HashSet;
 
 use super::*;
 
-use crate::loader::{
-    Context, DELTA_LOWER, GAMMA_UPPER, SIGMA_UPPER, Spanned,
-    ast::{self, Symbol as Sym},
-};
+use crate::{delta_lower, gamma_upper, loader::{
+    Context, INITIAL_STACK, INITIAL_STATE, Spanned, ast::{self, Symbol as Sym}, log::LogSink
+}, sigma_upper};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -90,7 +89,7 @@ impl<'a> Pda<'a> {
                         ctx.emit_error("states cannot be empty", span);
                     }
                 }
-                TL::Item(S("E" | SIGMA_UPPER | "sigma", _), list) => {
+                TL::Item(S(sigma_upper!(pat), _), list) => {
                     if !alphabet.is_empty() {
                         ctx.emit_error("alphabet already set", span);
                     }
@@ -142,7 +141,7 @@ impl<'a> Pda<'a> {
                     }
                     final_states = Some(map);
                 }
-                TL::Item(S("T" | GAMMA_UPPER | "gamma", _), list) => {
+                TL::Item(S(gamma_upper!(pat), _), list) => {
                     if !symbols.is_empty() {
                         ctx.emit_error("stack symbols already set", span);
                     }
@@ -166,7 +165,7 @@ impl<'a> Pda<'a> {
                         ctx.emit_error("stack symbols cannot be empty", span);
                     }
                 }
-                TL::Item(S("I" | "q0", _), S(src, src_d)) => match src {
+                TL::Item(S(INITIAL_STATE, _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_state.is_some() {
                             ctx.emit_error("initial state already set", span);
@@ -177,9 +176,9 @@ impl<'a> Pda<'a> {
                             ctx.emit_error("initial state symbol not defined as a state", src_d);
                         }
                     }
-                    _ => ctx.emit_error("expected ident", src_d),
+                    _ => _ = ctx.emit_error("expected ident", src_d),
                 },
-                TL::Item(S("S" | "z0", _), S(src, src_d)) => match src {
+                TL::Item(S(INITIAL_STACK, _), S(src, src_d)) => match src {
                     ast::Item::Symbol(Sym::Ident(ident)) => {
                         if initial_stack.is_some() {
                             ctx.emit_error("initial stack already set", span);
@@ -193,13 +192,13 @@ impl<'a> Pda<'a> {
                             );
                         }
                     }
-                    _ => ctx.emit_error("expected ident", src_d),
+                    _ => _ = ctx.emit_error("expected ident", src_d),
                 },
                 TL::Item(S(name, dest_s), _) => {
-                    ctx.emit_error(format!("unknown item {name:?}, expected 'Q' | 'E' | '{SIGMA_UPPER}' | 'sigma' | 'F' | 'T' | '{GAMMA_UPPER}' | 'gamma' | 'I' | 'q0' | 'S' | 'z0'"), dest_s);
+                    ctx.emit_error(format!("unknown item {name:?}, expected states, alphabet, symbols, final states, initial state, initial stack"), dest_s);
                 }
 
-                TL::TransitionFunc(S((S("d" | DELTA_LOWER | "delta", _), tuple), _), list) => {
+                TL::TransitionFunc(S((S(delta_lower!(pat), _), tuple), _), list) => {
                     let list = list.set_weak();
                     let Some((state, letter, stack_symbol)) =
                         tuple.as_ref().expect_pda_transition_function(ctx)
@@ -219,7 +218,7 @@ impl<'a> Pda<'a> {
                     };
 
                     let letter: Option<Letter<'_>> = match letter.0 {
-                        Sym::Epsilon => {
+                        Sym::Epsilon(_) => {
                             if !options.epsilon_moves {
                                 ctx.emit_error("epsilon moves not permitted", letter.1);
                             }
@@ -253,7 +252,7 @@ impl<'a> Pda<'a> {
                             .iter()
                             .rev()
                             .filter_map(|symbol| {
-                                if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon)) {
+                                if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon(_))) {
                                     return None;
                                 }
                                 let ident = symbol.expect_ident(ctx)?;
@@ -290,7 +289,7 @@ impl<'a> Pda<'a> {
                 TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                     ctx.emit_error(
                         format!(
-                            "unknown function {name:?}, expected 'd' | 'delta' | '{DELTA_LOWER}'"
+                            "unknown function {name:?}, expected transition function ( {} )", delta_lower!(str)
                         ),
                         dest_s,
                     );
@@ -299,7 +298,7 @@ impl<'a> Pda<'a> {
                 TL::ProductionRule(_, _) => {
                     ctx.emit_error("unexpected production rule", span);
                 }
-                TL::Table() => ctx.emit_error("unexpected table", span),
+                TL::Table() => _ = ctx.emit_error("unexpected table", span),
             }
         }
 
@@ -318,14 +317,14 @@ impl<'a> Pda<'a> {
         let initial_stack = match initial_stack {
             Some(some) => some,
             None => {
-                if symbols.contains_key(&Symbol("z0")) {
+                if symbols.contains_key(&Symbol("Z0")) {
                     ctx.emit_warning_locless(
-                        "initial stack symbol not defined, defaulting to 'z0'",
+                        "initial stack symbol not defined, defaulting to 'Z0'",
                     );
                 } else {
                     ctx.emit_error_locless("initial stack symbol not defined");
                 }
-                Symbol("z0")
+                Symbol("Z0")
             }
         };
 
@@ -374,8 +373,8 @@ impl<'a, 'b> Spanned<&'b ast::Tuple<'a>> {
                     Spanned(symbol, *symbol_span),
                 ));
             }
-            _ => ctx.emit_error(
-                "expected PDA transition function (ident, ident|~, ident)",
+            _ => _ = ctx.emit_error(
+                "expected PDA transition function (state, letter|epsilon, symbol)",
                 self.1,
             ),
         }
@@ -392,7 +391,7 @@ impl<'a, 'b> Spanned<&'b ast::Tuple<'a>> {
             ] => {
                 return Some((Spanned(state, *state_span), list.list_weak()));
             }
-            _ => ctx.emit_error("expected PDA transition (ident, item|[item])", self.1),
+            _ => _ = ctx.emit_error("expected PDA transition (state, symbol|[symbol])", self.1),
         }
         None
     }

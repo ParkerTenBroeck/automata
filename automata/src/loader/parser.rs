@@ -1,3 +1,5 @@
+use crate::epsilon;
+use crate::loader::log::LogSink;
 use crate::loader::{Context, Span};
 
 use super::lexer::Token as T;
@@ -49,7 +51,7 @@ impl<'a, 'b> Parser<'a, 'b> {
                     return self.peek;
                 }
                 Some(S(Ok(ok), r)) => return Some(S(ok, r)),
-                Some(S(Err(err), span)) => self.ctx.emit_error(format!("lexer: {err:?}"), span),
+                Some(S(Err(err), span)) => _ = self.ctx.emit_error(format!("lexer: {err:?}"), span),
                 None => return None,
             }
         }
@@ -90,9 +92,8 @@ impl<'a, 'b> Parser<'a, 'b> {
 
     fn parse_as_symbol(&mut self, tok: S<T<'a>>) -> S<Symbol<'a>> {
         match tok {
-            S(T::Tilde, r) => S(Symbol::Epsilon, r),
-            S(T::Ident("epsilon"), r) => S(Symbol::Epsilon, r),
-            S(T::Ident(super::EPSILON_LOWER), r) => S(Symbol::Epsilon, r),
+            S(T::Tilde, r) => S(Symbol::Epsilon("~"), r),
+            S(T::Ident(repr@ epsilon!(pat)), r) => S(Symbol::Epsilon(repr), r),
             S(T::Ident(ident), r) => S(Symbol::Ident(ident), r),
             S(got, span) => {
                 self.ctx.emit_error(
