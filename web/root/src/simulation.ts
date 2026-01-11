@@ -108,7 +108,7 @@ export class FaState {
 
   toString(): string {
     if (!this.repr) {
-      this.repr = this.state + +" >" + this.input.substring(this.position);
+      this.repr = this.state + " >" + this.input.substring(this.position);
     }
     return this.repr;
   }
