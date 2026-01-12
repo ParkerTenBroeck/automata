@@ -27,11 +27,11 @@ export const examples: readonly Example[] = [
     "DFA",
     `// strings over a,b which start and end with different letters
 
-type = DFA                     // type of machine DFA, NFA, DPDA, NPDA, DTM, NTM 
-Q    = {q0, qa, qa', qb, qb'}  // set of states 
-E    = {a, b}                  // alphabet
-F    = {qa', qb'}              // set of final states
-q0   = q0                      // initial state
+type   = DFA                     // type of machine DFA, NFA, DPDA, NPDA, DTM, NTM 
+Q      = {q0, qa, qa', qb, qb'}  // set of states 
+E      = {a, b}                  // alphabet
+F      = {qa', qb'}              // set of final states
+q0     = q0                      // initial state
 
 // transition function (state, letter) -> state
 d(q0, a) = qa
@@ -81,11 +81,12 @@ d(q4, 3) = q2`,
   new Example(
     "DPDA",
     "unequal",
-    `type=DPDA
-Q = {q0, qas, qeq, qmb, qlb} // states
-E = {a, b}                   // alphabet
-T = {z0, A}                  // stack
-F = {qmb, qlb}               // final states
+    `type   = DPDA
+Q      = {q0, qas, qeq, qmb, qlb} // states
+E      = {a, b}                   // alphabet
+T      = {z0, A}                  // stack
+F      = {qmb, qlb}               // final states
+accept = F                        // accept by final state
 q0 = q0
 z0 = z0
 
@@ -112,6 +113,7 @@ d(qmb, b, z0) = (qmb, z0)`,
 Q = {q0, q1} // states
 E = {a, b} // alphabet
 T = {z0, A, B} // stack
+accept = E // accept by empty stack
 q0 = q0
 z0 = z0
 
@@ -142,6 +144,7 @@ d(q1, b, B)         =   { (q1, epsilon) }`,
 Q = {q0, q1} // states
 E = {a, b} // alphabet
 T = {z0, A, B} // stack
+accept = E // accept by empty stack
 q0 = q0
 z0 = z0
 

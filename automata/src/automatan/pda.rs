@@ -60,12 +60,19 @@ dual_struct_serde! { {#[serde_with::serde_as]}
     }
 }
 
+#[derive(Clone, Copy)]
+enum AcceptBy {
+    EmptyStack,
+    FinalState,
+}
+
 pub struct PdaCompiler<'a, 'b> {
     ctx: &'b mut Context<'a>,
     options: Options,
 
     initial_state: Option<(State<'a>, Span)>,
     initial_stack: Option<(Symbol<'a>, Span)>,
+    accept_by: Option<(AcceptBy, Span)>,
 
     states: HashMap<State<'a>, StateInfo>,
     states_def: Option<Span>,
@@ -92,6 +99,18 @@ impl<'a> Pda<'a> {
     }
 }
 
+macro_rules! accept_empty {
+    ($ident: ident) => {
+      $crate::maker!($ident: "N","n","null","empty","E","Z0","z0")
+    };
+}
+
+macro_rules! accept_final {
+    ($ident: ident) => {
+      $crate::maker!($ident: "F","final")
+    };
+}
+
 impl<'a, 'b> PdaCompiler<'a, 'b> {
     pub fn new(ctx: &'b mut Context<'a>, options: Options) -> Self {
         Self {
@@ -100,6 +119,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
 
             initial_state: Default::default(),
             initial_stack: Default::default(),
+            accept_by: Default::default(),
             states: Default::default(),
             states_def: Default::default(),
             symbols: Default::default(),
@@ -140,11 +160,32 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
                 .emit_info_logless(concat!("G can be ", gamma_upper!(str)));
         }
 
-        // if self.final_states_def.is_none() {
-        //     self.ctx
-        //         .emit_error_locless("final states never defined")
-        //         .emit_help_logless("add: F = {...}");
-        // }
+        if self.accept_by.is_none() {
+            self.ctx
+                .emit_error_locless("accept by never defined")
+                .emit_help_logless("add: accept = N|F")
+                .emit_info_logless(concat!(
+                    "accept by empty stack N can be ",
+                    accept_empty!(str)
+                ))
+                .emit_info_logless(concat!(
+                    "accept by final state F can be ",
+                    accept_final!(str)
+                ));
+        }
+
+        if self.final_states_def.is_none()
+            && matches!(self.accept_by, Some((AcceptBy::FinalState, _)))
+        {
+            self.ctx
+                .emit_error_locless("final states never defined")
+                .emit_help_logless("add: F = {...}");
+        }else if let (Some((AcceptBy::EmptyStack, empty)), Some(states)) = (self.accept_by, self.final_states_def){
+            self.ctx
+                .emit_error_locless("final states defined alongside accept by empty stack")
+                .emit_help("either remote to accept by empty stack", states)
+                .emit_help("or remote to accept by final state", empty);
+            }
 
         let initial_state = match self.initial_state {
             Some(some) => some.0,
@@ -194,13 +235,16 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             return None;
         }
 
+        let final_states =
+            matches!(self.accept_by, Some((AcceptBy::FinalState, _))).then_some(self.final_states);
+
         Some(Pda {
             initial_state,
             initial_stack,
             states: self.states,
             symbols: self.symbols,
             alphabet: self.alphabet,
-            final_states: Some(self.final_states),
+            final_states,
             transitions: self.transitions,
         })
     }
@@ -209,6 +253,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
         use Spanned as S;
         use ast::TopLevel as TL;
         match element {
+            TL::Item(S("accept", _), item) => self.compile_accept_by(item, span),
             TL::Item(S("Q", _), list) => self.compile_states(list, span),
             TL::Item(S(gamma_upper!(pat), _), list) => self.compile_symbols(list, span),
             TL::Item(S(sigma_upper!(pat), _), list) => self.compile_alphabet(list, span),
@@ -216,7 +261,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             TL::Item(S(INITIAL_STATE, _), item) => self.compile_initial_state(item, span),
             TL::Item(S(INITIAL_STACK, _), item) => self.compile_initial_stack(item, span),
             TL::Item(S(name, dest_s), _) => {
-                self.ctx.emit_error(format!("unknown item {name:?}, expected states, stack symbols, alphabet, final states, initial state, initial stack"), dest_s);
+                self.ctx.emit_error(format!("unknown item {name:?}, expected states | stack symbols | alphabet | accept by | final states | initial state | initial stack"), dest_s);
             }
 
             TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {
@@ -237,6 +282,28 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             }
             TL::Table() => _ = self.ctx.emit_error("unexpected table", span),
         }
+    }
+
+    fn compile_accept_by(&mut self, item: Spanned<ast::Item<'a>>, top_level: Span) {
+        if let Some((_, previous)) = self.accept_by {
+            self.ctx
+                .emit_error("accept by already set", top_level)
+                .emit_info("previously defined here", previous);
+        }
+        let Some(by) = item.expect_ident(self.ctx) else {
+            return;
+        };
+
+        let by = match by {
+            accept_empty!(pat) => AcceptBy::EmptyStack,
+            accept_final!(pat) => AcceptBy::FinalState,
+            _ => {
+                self.ctx.emit_error("invalid accept by", item.1);
+                return;
+            }
+        };
+
+        self.accept_by = Some((by, top_level));
     }
 
     fn compile_states(&mut self, list: Spanned<ast::Item<'a>>, top_level: Span) {

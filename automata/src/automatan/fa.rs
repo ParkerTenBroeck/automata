@@ -173,7 +173,7 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             TL::Item(S("F", _), list) => self.compile_final_states(list, span),
             TL::Item(S(INITIAL_STATE, _), item) => self.compile_initial_state(item, span),
             TL::Item(S(name, dest_s), _) => {
-                self.ctx.emit_error(format!("unknown item {name:?}, expected states, alphabet, final states, initial state"), dest_s);
+                self.ctx.emit_error(format!("unknown item {name:?}, expected states | alphabet | final states | initial state"), dest_s);
             }
 
             TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {

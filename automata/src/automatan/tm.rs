@@ -190,7 +190,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
             TL::Item(S(INITIAL_STATE, _), item) => self.compile_initial_state(item, span),
             TL::Item(S(BLANK_SYMBOL, _), item) => self.compile_blank_symbol(item, span),
             TL::Item(S(name, dest_s), _) => {
-                self.ctx.emit_error(format!("unknown item {name:?}, expected states, symbols, final states, initial state, blank symbol"), dest_s);
+                self.ctx.emit_error(format!("unknown item {name:?}, expected states | symbols | final states | initial state | blank symbol"), dest_s);
             }
 
             TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {
