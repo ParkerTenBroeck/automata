@@ -2,6 +2,7 @@
 
 import {
   Decoration,
+  DecorationSet,
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
@@ -10,7 +11,7 @@ import {
   lineNumbers,
 } from "npm:@codemirror/view";
 
-import { EditorState, StateField, Text } from "npm:@codemirror/state";
+import { EditorState, RangeSetBuilder, StateEffect, StateField, Text } from "npm:@codemirror/state";
 import {
   defaultKeymap,
   history,
@@ -44,6 +45,57 @@ function compile(
     return { log: [], ansi_log: "", machine: "" };
   }
 }
+
+
+export type HighlightKind = "focus" | "success" | "warning" | "error";
+
+export type HighlightSpan = {
+  from: number;
+  to: number;
+  kind: HighlightKind;
+};
+
+function decoForKind(kind: HighlightKind) {
+  // Use a class per kind so each gets a distinct color via CSS
+  return Decoration.mark({ class: `cm-highlight cm-highlight-${kind}` });
+}
+
+export function applyHighlights(view: EditorView, spans: HighlightSpan[]) {
+  view.dispatch({ effects: setHighlights.of(spans) });
+}
+
+
+
+export const highlightsField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+
+  update(highlights, tr) {
+    // Keep highlights aligned with document edits
+    // highlights = highlights.map(tr.changes);
+
+    for (const e of tr.effects) {
+      if (e.is(setHighlights)) {
+        const spans = e.value;
+
+        const builder = new RangeSetBuilder<Decoration>();
+        for (const s of spans) {
+          const from = Math.max(0, Math.min(s.from, tr.state.doc.length));
+          const to = Math.max(0, Math.min(s.to, tr.state.doc.length));
+          if (to > from) builder.add(from, to, decoForKind(s.kind));
+        }
+        highlights = builder.finish();
+      }
+    }
+
+    return highlights;
+  },
+
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+export const setHighlights = StateEffect.define<HighlightSpan[]>();
 
 const eventBusConnection = StateField.define({
   create(state) {
@@ -198,6 +250,7 @@ const state = EditorState.create({
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
     eventBusConnection,
+    highlightsField,
     diagHover,
 
     EditorView.lineWrapping,
@@ -223,3 +276,11 @@ bus.on("controls/editor/set_text", ({ text }) => {
 bus.on("example/selected", ({ example }) => {
   bus.emit("controls/editor/set_text", { text: example.machine });
 });
+
+
+applyHighlights(editor, [
+  { from: 0, to: 10, kind: "focus" },
+  { from: 10, to: 20, kind: "success" },
+  { from: 20, to: 30, kind: "warning" },
+  { from: 30, to: 40, kind: "error" },
+])

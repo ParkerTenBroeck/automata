@@ -132,3 +132,14 @@
   text-underline-offset: 2px;
 }
 
+
+
+.cm-highlight {
+  border-radius: 4px;
+  padding: 0 1px;
+}
+
+.cm-highlight-warning { background: color-mix(in srgb, var(--warning) 40%, var(--bg-0)); }
+.cm-highlight-focus { background: color-mix(in srgb, var(--focus) 40%, var(--bg-0)); }
+.cm-highlight-success { background: color-mix(in srgb, var(--success) 40%, var(--bg-0)); }
+.cm-highlight-error { background: color-mix(in srgb, var(--error) 40%, var(--bg-0)); }
