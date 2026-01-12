@@ -245,5 +245,5 @@ function buildExamplesDropdown(
 
 const selectEl = document.getElementById("exampleSelect") as HTMLSelectElement;
 buildExamplesDropdown(selectEl, examples, (example) => {
-  bus.emit("example/selected", {example});
+  bus.emit("example/selected", example);
 });

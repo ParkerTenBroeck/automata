@@ -25,6 +25,7 @@ import wasm from "./wasm.ts";
 import { Share } from "./share.ts";
 import { examples } from "./examples.ts";
 import { bus } from "./bus.ts";
+import { current, Highlight, HighlightKind } from "./highlight.ts";
 
 function tokenize(text: string): wasm.Tok[] {
   try {
@@ -47,25 +48,16 @@ function compile(
 }
 
 
-export type HighlightKind = "focus" | "success" | "warning" | "error";
-
-export type HighlightSpan = {
-  from: number;
-  to: number;
-  kind: HighlightKind;
-};
-
 function decoForKind(kind: HighlightKind) {
   // Use a class per kind so each gets a distinct color via CSS
   return Decoration.mark({ class: `cm-highlight cm-highlight-${kind}` });
 }
 
-export function applyHighlights(view: EditorView, spans: HighlightSpan[]) {
-  view.dispatch({ effects: setHighlights.of(spans) });
-}
-
-
-
+bus.on("highlight/update", _ => {
+  const arr = current.values().toArray().sort((a, b) => a.span[0]-b.span[0]);
+  editor.dispatch({ effects: setHighlights.of(arr) });
+});
+export const setHighlights = StateEffect.define<Highlight[]>();
 export const highlightsField = StateField.define<DecorationSet>({
   create() {
     return Decoration.none;
@@ -73,7 +65,7 @@ export const highlightsField = StateField.define<DecorationSet>({
 
   update(highlights, tr) {
     // Keep highlights aligned with document edits
-    // highlights = highlights.map(tr.changes);
+    highlights = highlights.map(tr.changes);
 
     for (const e of tr.effects) {
       if (e.is(setHighlights)) {
@@ -81,8 +73,9 @@ export const highlightsField = StateField.define<DecorationSet>({
 
         const builder = new RangeSetBuilder<Decoration>();
         for (const s of spans) {
-          const from = Math.max(0, Math.min(s.from, tr.state.doc.length));
-          const to = Math.max(0, Math.min(s.to, tr.state.doc.length));
+          
+          const from = Math.max(0, Math.min(s.span[0], tr.state.doc.length));
+          const to = Math.max(0, Math.min(s.span[1], tr.state.doc.length));
           if (to > from) builder.add(from, to, decoForKind(s.kind));
         }
         highlights = builder.finish();
@@ -95,7 +88,6 @@ export const highlightsField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-export const setHighlights = StateEffect.define<HighlightSpan[]>();
 
 const eventBusConnection = StateField.define({
   create(state) {
@@ -264,23 +256,15 @@ const editor = new EditorView({
 
 bus.on(
   "begin",
-  (_) => bus.emit("controls/editor/set_text", { text: defaultText() }),
+  (_) => bus.emit("controls/editor/set_text", defaultText()),
 );
 
-bus.on("controls/editor/set_text", ({ text }) => {
+bus.on("controls/editor/set_text", text => {
   editor.dispatch({
     changes: { from: 0, to: editor.state.doc.length, insert: text },
   });
 });
 
-bus.on("example/selected", ({ example }) => {
-  bus.emit("controls/editor/set_text", { text: example.machine });
+bus.on("example/selected", example => {
+  bus.emit("controls/editor/set_text", example.machine);
 });
-
-
-applyHighlights(editor, [
-  { from: 0, to: 10, kind: "focus" },
-  { from: 10, to: 20, kind: "success" },
-  { from: 20, to: 30, kind: "warning" },
-  { from: 30, to: 40, kind: "error" },
-])

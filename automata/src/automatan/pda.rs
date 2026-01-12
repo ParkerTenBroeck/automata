@@ -264,8 +264,8 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
                 self.ctx.emit_error(format!("unknown item {name:?}, expected states | stack symbols | alphabet | accept by | final states | initial state | initial stack"), dest_s);
             }
 
-            TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {
-                self.compile_transition_function(args, list)
+            TL::TransitionFunc(S((S(delta_lower!(pat), _), args), func), list) => {
+                self.compile_transition_function(args, func, list)
             }
             TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                 self.ctx.emit_error(
@@ -476,6 +476,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
     fn compile_transition_function(
         &mut self,
         args: Spanned<ast::Tuple<'a>>,
+        function: Span,
         list: Spanned<ast::Item<'a>>,
     ) {
         let list = list.set_weak();
@@ -559,8 +560,8 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             if !entry.insert(TransitionTo {
                 state: State(next_state.0),
                 stack,
-
-                function: args.1,
+                
+                function,
                 transition: item.1,
             }) {
                 self.ctx.emit_warning("duplicate transition", item.1);
