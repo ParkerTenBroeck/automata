@@ -2,9 +2,15 @@ use std::collections::HashSet;
 
 use super::*;
 
-use crate::{delta_lower, dual_struct_serde, gamma_upper, loader::{
-    Context, INITIAL_STACK, INITIAL_STATE, Spanned, ast::{self, Symbol as Sym}, log::LogSink
-}, sigma_upper};
+use crate::{
+    delta_lower, dual_struct_serde, epsilon, gamma_upper,
+    loader::{
+        Context, INITIAL_STACK, INITIAL_STATE, Spanned,
+        ast::{self, Symbol as Sym},
+        log::LogSink,
+    },
+    sigma_upper,
+};
 
 dual_struct_serde! {
     #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -54,314 +60,445 @@ dual_struct_serde! { {#[serde_with::serde_as]}
     }
 }
 
+pub struct PdaCompiler<'a, 'b> {
+    ctx: &'b mut Context<'a>,
+    options: Options,
+
+    initial_state: Option<(State<'a>, Span)>,
+    initial_stack: Option<(Symbol<'a>, Span)>,
+
+    states: HashMap<State<'a>, StateInfo>,
+    states_def: Option<Span>,
+
+    symbols: HashMap<Symbol<'a>, SymbolInfo>,
+    symbols_def: Option<Span>,
+
+    alphabet: HashMap<Letter<'a>, LetterInfo>,
+    alphabet_def: Option<Span>,
+
+    final_states: HashMap<State<'a>, StateInfo>,
+    final_states_def: Option<Span>,
+
+    transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+}
+
 impl<'a> Pda<'a> {
     pub fn compile(
         items: impl Iterator<Item = Spanned<ast::TopLevel<'a>>>,
         ctx: &mut Context<'a>,
         options: Options,
     ) -> Option<Pda<'a>> {
-        let mut initial_state = None;
-        let mut initial_stack = None;
+        PdaCompiler::new(ctx, options).compile(items)
+    }
+}
 
-        let mut states = HashMap::new();
-        let mut symbols = HashMap::new();
-        let mut alphabet = HashMap::new();
-        let mut final_states = None;
+impl<'a, 'b> PdaCompiler<'a, 'b> {
+    pub fn new(ctx: &'b mut Context<'a>, options: Options) -> Self {
+        Self {
+            ctx,
+            options,
 
-        let mut transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>> =
-            HashMap::new();
+            initial_state: Default::default(),
+            initial_stack: Default::default(),
+            states: Default::default(),
+            states_def: Default::default(),
+            symbols: Default::default(),
+            symbols_def: Default::default(),
+            alphabet: Default::default(),
+            alphabet_def: Default::default(),
+            final_states: Default::default(),
+            final_states_def: Default::default(),
+            transitions: Default::default(),
+        }
+    }
 
+    pub fn compile(
+        mut self,
+        items: impl Iterator<Item = Spanned<ast::TopLevel<'a>>>,
+    ) -> Option<Pda<'a>> {
         for Spanned(element, span) in items {
-            use Spanned as S;
-            use ast::TopLevel as TL;
-            match element {
-                TL::Item(S("Q", _), list) => {
-                    if !states.is_empty() {
-                        ctx.emit_error("states already set", span);
-                    }
-                    let Some(list) = list.expect_set(ctx) else {
-                        continue;
-                    };
-                    for item in list {
-                        let Some(ident) = item.expect_ident(ctx) else {
-                            continue;
-                        };
-                        if states
-                            .insert(State(ident), StateInfo { definition: item.1 })
-                            .is_some()
-                        {
-                            ctx.emit_error("state redefined", item.1);
-                        }
-                    }
-
-                    if list.is_empty() {
-                        ctx.emit_error("states cannot be empty", span);
-                    }
-                }
-                TL::Item(S(sigma_upper!(pat), _), list) => {
-                    if !alphabet.is_empty() {
-                        ctx.emit_error("alphabet already set", span);
-                    }
-                    let Some(list) = list.expect_set(ctx) else {
-                        continue;
-                    };
-                    for item in list {
-                        let Some(ident) = item.expect_ident(ctx) else {
-                            continue;
-                        };
-
-                        if ident.chars().count() != 1 {
-                            ctx.emit_error("letter cannot be longer than one char", item.1);
-                        }
-
-                        if alphabet
-                            .insert(Letter(ident), LetterInfo { definition: item.1 })
-                            .is_some()
-                        {
-                            ctx.emit_error("letter redefined", item.1);
-                        }
-                    }
-                    if list.is_empty() {
-                        ctx.emit_error("alphabet cannot be empty", span);
-                    }
-                }
-                TL::Item(S("F", _), list) => {
-                    if final_states.is_some() {
-                        ctx.emit_error("final states already set", span);
-                    }
-                    let mut map = HashMap::new();
-                    let Some(list) = list.expect_set(ctx) else {
-                        continue;
-                    };
-                    for item in list {
-                        let Some(ident) = item.expect_ident(ctx) else {
-                            continue;
-                        };
-                        if states.contains_key(&State(ident)) {
-                            if map
-                                .insert(State(ident), StateInfo { definition: item.1 })
-                                .is_some()
-                            {
-                                ctx.emit_error("final state redefined", item.1);
-                            }
-                        } else {
-                            ctx.emit_error("final state not defined in set of states", item.1);
-                        }
-                    }
-                    final_states = Some(map);
-                }
-                TL::Item(S(gamma_upper!(pat), _), list) => {
-                    if !symbols.is_empty() {
-                        ctx.emit_error("stack symbols already set", span);
-                    }
-                    let Some(list) = list.expect_set(ctx) else {
-                        continue;
-                    };
-                    for item in list {
-                        let Some(ident) = item.expect_ident(ctx) else {
-                            continue;
-                        };
-
-                        if symbols
-                            .insert(Symbol(ident), SymbolInfo { definition: item.1 })
-                            .is_some()
-                        {
-                            ctx.emit_error("stack symbol redefined", item.1);
-                        }
-                    }
-
-                    if list.is_empty() {
-                        ctx.emit_error("stack symbols cannot be empty", span);
-                    }
-                }
-                TL::Item(S(INITIAL_STATE, _), S(src, src_d)) => match src {
-                    ast::Item::Symbol(Sym::Ident(ident)) => {
-                        if initial_state.is_some() {
-                            ctx.emit_error("initial state already set", span);
-                        }
-                        if states.contains_key(&State(ident)) {
-                            initial_state = Some(State(ident))
-                        } else {
-                            ctx.emit_error("initial state symbol not defined as a state", src_d);
-                        }
-                    }
-                    _ => _ = ctx.emit_error("expected ident", src_d),
-                },
-                TL::Item(S(INITIAL_STACK, _), S(src, src_d)) => match src {
-                    ast::Item::Symbol(Sym::Ident(ident)) => {
-                        if initial_stack.is_some() {
-                            ctx.emit_error("initial stack already set", span);
-                        }
-                        if symbols.contains_key(&Symbol(ident)) {
-                            initial_stack = Some(Symbol(ident));
-                        } else {
-                            ctx.emit_error(
-                                "initial stack symbol not defined as a stack symbol",
-                                src_d,
-                            );
-                        }
-                    }
-                    _ => _ = ctx.emit_error("expected ident", src_d),
-                },
-                TL::Item(S(name, dest_s), _) => {
-                    ctx.emit_error(format!("unknown item {name:?}, expected states, alphabet, symbols, final states, initial state, initial stack"), dest_s);
-                }
-
-                TL::TransitionFunc(S((S(delta_lower!(pat), _), tuple), _), list) => {
-                    let list = list.set_weak();
-                    let Some((state, letter, stack_symbol)) =
-                        tuple.as_ref().expect_pda_transition_function(ctx)
-                    else {
-                        continue;
-                    };
-                    if !states.contains_key(&State(state.0)) {
-                        ctx.emit_error("transition state not defined as state", state.1);
-                        continue;
-                    };
-                    if !symbols.contains_key(&Symbol(stack_symbol.0)) {
-                        ctx.emit_error(
-                            "transition stack symbol not defined as stack symbol",
-                            stack_symbol.1,
-                        );
-                        continue;
-                    };
-
-                    let letter: Option<Letter<'_>> = match letter.0 {
-                        Sym::Epsilon(_) => {
-                            if !options.epsilon_moves {
-                                ctx.emit_error("epsilon moves not permitted", letter.1);
-                            }
-                            None
-                        }
-                        Sym::Ident(val) => {
-                            if !alphabet.contains_key(&Letter(val)) {
-                                ctx.emit_error(
-                                    "transition letter not defined in alphabet",
-                                    letter.1,
-                                );
-                            }
-                            Some(Letter(val))
-                        }
-                    };
-
-                    for item in list {
-                        let Some((next_state, stack)) = item
-                            .expect_tuple(ctx)
-                            .and_then(|item| item.expect_pda_transition(ctx))
-                        else {
-                            continue;
-                        };
-
-                        if !states.contains_key(&State(next_state.0)) {
-                            ctx.emit_error("transition state not defined as state", next_state.1);
-                            continue;
-                        };
-
-                        let stack: Vec<_> = stack
-                            .iter()
-                            .rev()
-                            .filter_map(|symbol| {
-                                if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon(_))) {
-                                    return None;
-                                }
-                                let ident = symbol.expect_ident(ctx)?;
-
-                                if !symbols.contains_key(&Symbol(ident)) {
-                                    ctx.emit_error("transition stack symbol not defined", symbol.1);
-                                    return None;
-                                };
-                                Some(Symbol(ident))
-                            })
-                            .collect();
-
-                        let entry: &mut _ = transitions
-                            .entry(TransitionFrom {
-                                letter,
-                                state: State(state.0),
-                                symbol: Symbol(stack_symbol.0),
-                            })
-                            .or_default();
-                        if !entry.is_empty() && !options.non_deterministic {
-                            ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1);
-                        }
-                        if !entry.insert(TransitionTo {
-                            state: State(next_state.0),
-                            stack,
-
-                            function: tuple.1,
-                            transition: item.1,
-                        }) {
-                            ctx.emit_warning("duplicate transition", item.1);
-                        }
-                    }
-                }
-                TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
-                    ctx.emit_error(
-                        format!(
-                            "unknown function {name:?}, expected transition function ( {} )", delta_lower!(str)
-                        ),
-                        dest_s,
-                    );
-                }
-
-                TL::ProductionRule(_, _) => {
-                    ctx.emit_error("unexpected production rule", span);
-                }
-                TL::Table() => _ = ctx.emit_error("unexpected table", span),
-            }
+            self.compile_top_level(element, span);
         }
 
-        if symbols.is_empty() {
-            ctx.emit_error_locless("stack symbols never defined");
+        if self.states_def.is_none() {
+            self.ctx
+                .emit_error_locless("states never defined")
+                .emit_help_logless("add: Q = {...}");
         }
 
-        if alphabet.is_empty() {
-            ctx.emit_error_locless("alphabet never defined");
+        if self.alphabet_def.is_none() {
+            self.ctx
+                .emit_error_locless("alphabet never defined")
+                .emit_help_logless("add: E = {...}")
+                .emit_info_logless(concat!("E can be ", sigma_upper!(str)));
         }
 
-        if states.is_empty() {
-            ctx.emit_error_locless("states never defined");
+        if self.symbols_def.is_none() {
+            self.ctx
+                .emit_error_locless("stack symbols never defined")
+                .emit_help_logless("add: G = {...}")
+                .emit_info_logless(concat!("G can be ", gamma_upper!(str)));
         }
 
-        let initial_stack = match initial_stack {
-            Some(some) => some,
+        // if self.final_states_def.is_none() {
+        //     self.ctx
+        //         .emit_error_locless("final states never defined")
+        //         .emit_help_logless("add: F = {...}");
+        // }
+
+        let initial_state = match self.initial_state {
+            Some(some) => some.0,
             None => {
-                if symbols.contains_key(&Symbol("Z0")) {
-                    ctx.emit_warning_locless(
-                        "initial stack symbol not defined, defaulting to 'Z0'",
-                    );
+                if self.states.contains_key(&State("q0")) {
+                    self.ctx
+                        .emit_warning_locless("initial state not defined, defaulting to 'q0'")
+                        .emit_help_logless(format!("add: {INITIAL_STATE} = q0"));
                 } else {
-                    ctx.emit_error_locless("initial stack symbol not defined");
-                }
-                Symbol("Z0")
-            }
-        };
-
-        let initial_state = match initial_state {
-            Some(some) => some,
-            None => {
-                if states.contains_key(&State("q0")) {
-                    ctx.emit_warning_locless("initial state not defined, defaulting to 'q0'");
-                } else {
-                    ctx.emit_error_locless("initial state not defined");
+                    self.ctx
+                        .emit_error_locless("initial state not defined")
+                        .emit_help_logless(format!("add: {INITIAL_STATE} = ..."));
                 }
                 State("q0")
             }
         };
 
-        if ctx.contains_errors() {
+        let initial_stack = match self.initial_stack {
+            Some(some) => some.0,
+            None => {
+                if self.symbols.contains_key(&Symbol("Z0")) {
+                    self.ctx
+                        .emit_warning_locless(
+                            "initial stack symbol not defined, defaulting to 'Z0'",
+                        )
+                        .emit_help_logless(format!("add: {INITIAL_STACK} = Z0"));
+                } else {
+                    self.ctx
+                        .emit_error_locless("initial stack symbol not defined")
+                        .emit_help_logless(format!("add: {INITIAL_STACK} = ..."));
+                }
+                Symbol("Z0")
+            }
+        };
+
+        if self.transitions.is_empty() {
+            self.ctx
+                .emit_warning_locless("no transitions defined")
+                .emit_help_logless(
+                    "consider defining one: d(state, letter|epsilon, symbol) = (state, [symbol]) | {(state, [symbol]), ...}",
+                )
+                .emit_info_logless(concat!("d can be ", delta_lower!(str)))
+                .emit_info_logless(concat!("epsilon can be ", epsilon!(str)));
+        }
+
+        if self.ctx.contains_errors() {
             return None;
         }
 
         Some(Pda {
             initial_state,
             initial_stack,
-            states,
-            symbols,
-            alphabet,
-            final_states,
-            transitions,
+            states: self.states,
+            symbols: self.symbols,
+            alphabet: self.alphabet,
+            final_states: Some(self.final_states),
+            transitions: self.transitions,
         })
+    }
+
+    fn compile_top_level(&mut self, element: ast::TopLevel<'a>, span: Span) {
+        use Spanned as S;
+        use ast::TopLevel as TL;
+        match element {
+            TL::Item(S("Q", _), list) => self.compile_states(list, span),
+            TL::Item(S(gamma_upper!(pat), _), list) => self.compile_symbols(list, span),
+            TL::Item(S(sigma_upper!(pat), _), list) => self.compile_alphabet(list, span),
+            TL::Item(S("F", _), list) => self.compile_final_states(list, span),
+            TL::Item(S(INITIAL_STATE, _), item) => self.compile_initial_state(item, span),
+            TL::Item(S(INITIAL_STACK, _), item) => self.compile_initial_stack(item, span),
+            TL::Item(S(name, dest_s), _) => {
+                self.ctx.emit_error(format!("unknown item {name:?}, expected states, stack symbols, alphabet, final states, initial state, initial stack"), dest_s);
+            }
+
+            TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {
+                self.compile_transition_function(args, list)
+            }
+            TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
+                self.ctx.emit_error(
+                    format!(
+                        "unknown function {name:?}, expected transition function ( {} )",
+                        delta_lower!(str)
+                    ),
+                    dest_s,
+                );
+            }
+
+            TL::ProductionRule(_, _) => {
+                self.ctx.emit_error("unexpected production rule", span);
+            }
+            TL::Table() => _ = self.ctx.emit_error("unexpected table", span),
+        }
+    }
+
+    fn compile_states(&mut self, list: Spanned<ast::Item<'a>>, top_level: Span) {
+        if let Some(previous) = self.states_def {
+            self.ctx
+                .emit_error("states already set", top_level)
+                .emit_info("previously defined here", previous);
+        }
+        let Some(list) = list.expect_set(self.ctx) else {
+            return;
+        };
+        for item in list {
+            let Some(ident) = item.expect_ident(self.ctx) else {
+                continue;
+            };
+            if let Some(previous) = self
+                .states
+                .insert(State(ident), StateInfo { definition: item.1 })
+            {
+                self.ctx
+                    .emit_error("state redefined", item.1)
+                    .emit_info("previously defined here", previous.definition);
+            }
+        }
+
+        if list.is_empty() {
+            self.ctx.emit_error("states cannot be empty", top_level);
+        }
+        self.states_def = Some(top_level);
+    }
+
+    fn compile_symbols(&mut self, list: Spanned<ast::Item<'a>>, top_level: Span) {
+        if let Some(previous) = self.symbols_def {
+            self.ctx
+                .emit_error("stack symbols already set", top_level)
+                .emit_info("previously defined here", previous);
+        }
+        let Some(list) = list.expect_set(self.ctx) else {
+            return;
+        };
+        for item in list {
+            let Some(ident) = item.expect_ident(self.ctx) else {
+                continue;
+            };
+            if let Some(previous) = self
+                .symbols
+                .insert(Symbol(ident), SymbolInfo { definition: item.1 })
+            {
+                self.ctx
+                    .emit_error("stack symbol redefined", item.1)
+                    .emit_info("previously defined here", previous.definition);
+            }
+        }
+
+        if list.is_empty() {
+            self.ctx.emit_error("states cannot be empty", top_level);
+        }
+        self.symbols_def = Some(top_level);
+    }
+
+    fn compile_alphabet(&mut self, list: Spanned<ast::Item<'a>>, top_level: Span) {
+        if let Some(previous) = self.alphabet_def {
+            self.ctx
+                .emit_error("alphabet already set", top_level)
+                .emit_info("previously defined here", previous);
+        }
+        let Some(list) = list.expect_set(self.ctx) else {
+            return;
+        };
+        for item in list {
+            let Some(ident) = item.expect_ident(self.ctx) else {
+                continue;
+            };
+
+            if ident.chars().count() != 1 {
+                self.ctx
+                    .emit_error("letter cannot be longer than one char", item.1);
+            }
+
+            if let Some(previous) = self
+                .alphabet
+                .insert(Letter(ident), LetterInfo { definition: item.1 })
+            {
+                self.ctx
+                    .emit_error("letter redefined", item.1)
+                    .emit_help("previously defined here", previous.definition);
+            }
+        }
+        if list.is_empty() {
+            self.ctx.emit_error("alphabet cannot be empty", top_level);
+        }
+        self.alphabet_def = Some(top_level);
+    }
+
+    fn compile_final_states(&mut self, list: Spanned<ast::Item<'a>>, top_level: Span) {
+        if let Some(previous) = self.final_states_def {
+            self.ctx
+                .emit_error("final states already set", top_level)
+                .emit_help("previously defined here", previous);
+        }
+        let Some(list) = list.expect_set(self.ctx) else {
+            return;
+        };
+        for item in list {
+            let Some(ident) = item.expect_ident(self.ctx) else {
+                continue;
+            };
+            if self.states.contains_key(&State(ident)) {
+                if self
+                    .final_states
+                    .insert(State(ident), StateInfo { definition: item.1 })
+                    .is_some()
+                {
+                    self.ctx.emit_error("final state redefined", item.1);
+                }
+            } else {
+                self.ctx
+                    .emit_error("final state not defined in set of states", item.1);
+            }
+        }
+        self.final_states_def = Some(top_level);
+    }
+
+    fn compile_initial_state(
+        &mut self,
+        Spanned(src, src_d): Spanned<ast::Item<'a>>,
+        top_level: Span,
+    ) {
+        match src {
+            ast::Item::Symbol(Sym::Ident(ident)) => {
+                if let Some((_, previous)) = self.initial_state {
+                    self.ctx
+                        .emit_error("initial state already set", top_level)
+                        .emit_help("previously defined here", previous);
+                }
+                if self.states.contains_key(&State(ident)) {
+                    self.initial_state = Some((State(ident), top_level))
+                } else {
+                    self.ctx
+                        .emit_error("initial state symbol not defined as a state", src_d);
+                }
+            }
+            _ => _ = self.ctx.emit_error("expected ident", src_d),
+        }
+    }
+
+    fn compile_initial_stack(
+        &mut self,
+        Spanned(src, src_d): Spanned<ast::Item<'a>>,
+        top_level: Span,
+    ) {
+        match src {
+            ast::Item::Symbol(Sym::Ident(ident)) => {
+                if let Some((_, previous)) = self.initial_stack {
+                    self.ctx
+                        .emit_error("initial stack symbol already set", top_level)
+                        .emit_help("previously defined here", previous);
+                }
+                if self.symbols.contains_key(&Symbol(ident)) {
+                    self.initial_stack = Some((Symbol(ident), top_level))
+                } else {
+                    self.ctx
+                        .emit_error("initial stack symbol not defined as a state", src_d);
+                }
+            }
+            _ => _ = self.ctx.emit_error("expected ident", src_d),
+        }
+    }
+
+    fn compile_transition_function(
+        &mut self,
+        args: Spanned<ast::Tuple<'a>>,
+        list: Spanned<ast::Item<'a>>,
+    ) {
+        let list = list.set_weak();
+        let Some((state, letter, stack_symbol)) =
+            args.as_ref().expect_pda_transition_function(self.ctx)
+        else {
+            return;
+        };
+        if !self.states.contains_key(&State(state.0)) {
+            self.ctx
+                .emit_error("transition state not defined as state", state.1);
+            return;
+        };
+        if !self.symbols.contains_key(&Symbol(stack_symbol.0)) {
+            self.ctx.emit_error(
+                "transition stack symbol not defined as stack symbol",
+                stack_symbol.1,
+            );
+            return;
+        };
+
+        let letter: Option<Letter<'_>> = match letter.0 {
+            Sym::Epsilon(_) => {
+                if !self.options.epsilon_moves {
+                    self.ctx.emit_error("epsilon moves not permitted", letter.1);
+                }
+                None
+            }
+            Sym::Ident(val) => {
+                if !self.alphabet.contains_key(&Letter(val)) {
+                    self.ctx
+                        .emit_error("transition letter not defined in alphabet", letter.1);
+                }
+                Some(Letter(val))
+            }
+        };
+
+        for item in list {
+            let Some((next_state, stack)) = item
+                .expect_tuple(self.ctx)
+                .and_then(|item| item.expect_pda_transition(self.ctx))
+            else {
+                continue;
+            };
+
+            if !self.states.contains_key(&State(next_state.0)) {
+                self.ctx
+                    .emit_error("transition state not defined as state", next_state.1);
+                continue;
+            };
+
+            let stack: Vec<_> = stack
+                .iter()
+                .rev()
+                .filter_map(|symbol| {
+                    if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon(_))) {
+                        return None;
+                    }
+                    let ident = symbol.expect_ident(self.ctx)?;
+
+                    if !self.symbols.contains_key(&Symbol(ident)) {
+                        self.ctx
+                            .emit_error("transition stack symbol not defined", symbol.1);
+                        return None;
+                    };
+                    Some(Symbol(ident))
+                })
+                .collect();
+
+            let entry: &mut _ = self
+                .transitions
+                .entry(TransitionFrom {
+                    letter,
+                    state: State(state.0),
+                    symbol: Symbol(stack_symbol.0),
+                })
+                .or_default();
+            if !entry.is_empty() && !self.options.non_deterministic {
+                self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1);
+            }
+            if !entry.insert(TransitionTo {
+                state: State(next_state.0),
+                stack,
+
+                function: args.1,
+                transition: item.1,
+            }) {
+                self.ctx.emit_warning("duplicate transition", item.1);
+            }
+        }
     }
 }
 
@@ -382,10 +519,12 @@ impl<'a, 'b> Spanned<&'b ast::Tuple<'a>> {
                     Spanned(symbol, *symbol_span),
                 ));
             }
-            _ => _ = ctx.emit_error(
-                "expected PDA transition function (state, letter|epsilon, symbol)",
-                self.1,
-            ),
+            _ => {
+                _ = ctx.emit_error(
+                    "expected PDA transition function (state, letter|epsilon, symbol)",
+                    self.1,
+                )
+            }
         }
         None
     }

@@ -3,11 +3,13 @@ use std::collections::HashSet;
 use super::*;
 
 use crate::{
-    delta_lower, dual_struct_serde, epsilon, loader::{
+    delta_lower, dual_struct_serde, epsilon,
+    loader::{
         Context, INITIAL_STATE, Spanned,
         ast::{self, Symbol as Sym, TopLevel},
         log::LogSink,
-    }, sigma_upper
+    },
+    sigma_upper,
 };
 
 dual_struct_serde! {
@@ -104,17 +106,17 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             self.compile_top_level(element, span);
         }
 
+        if self.states_def.is_none() {
+            self.ctx
+                .emit_error_locless("states never defined")
+                .emit_help_logless("add: Q = {...}");
+        }
+
         if self.alphabet_def.is_none() {
             self.ctx
                 .emit_error_locless("alphabet never defined")
                 .emit_help_logless("add: E = {...}")
                 .emit_info_logless(concat!("E can be ", sigma_upper!(str)));
-        }
-
-        if self.states_def.is_none() {
-            self.ctx
-                .emit_error_locless("states never defined")
-                .emit_help_logless("add: Q = {...}");
         }
 
         if self.final_states_def.is_none() {
@@ -139,9 +141,12 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             }
         };
 
-        if self.transitions.is_empty(){
-            self.ctx.emit_warning_locless("no transitions defined")
-                .emit_help_logless("consider defining one: d(state, letter|epsilon) = state | {state, state, ...}")
+        if self.transitions.is_empty() {
+            self.ctx
+                .emit_warning_locless("no transitions defined")
+                .emit_help_logless(
+                    "consider defining one: d(state, letter|epsilon) = state | {state, ...}",
+                )
                 .emit_info_logless(concat!("d can be ", delta_lower!(str)))
                 .emit_info_logless(concat!("epsilon can be ", epsilon!(str)));
         }

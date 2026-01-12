@@ -1,8 +1,10 @@
 use crate::{
-    automatan::*, dual_enum_serde, dual_struct_serde, loader::{
+    automatan::*,
+    dual_enum_serde,
+    loader::{
         ast::TopLevel,
         log::{LogEntry, LogSink},
-    }
+    },
 };
 
 pub mod ast;
@@ -119,8 +121,8 @@ impl<'a> Context<'a> {
     }
 }
 
-dual_enum_serde!{ 
-    {#[serde(tag = "type")] #[serde(rename_all = "snake_case")]}  
+dual_enum_serde! {
+    {#[serde(tag = "type")] #[serde(rename_all = "snake_case")]}
     #[derive(Clone, Debug)]
     pub enum Machine<'a> {
         Fa(#[serde(borrow)] fa::Fa<'a>),

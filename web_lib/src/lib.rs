@@ -94,7 +94,7 @@ pub fn lex(input: &str) -> Vec<Tok> {
                 }
 
                 // ugly hack to keep single ascii letters non keyworded for user
-                Token::Ident(ident) if ident.is_ascii() && ident.len()==1 => Kind::Ident,
+                Token::Ident(ident) if ident.is_ascii() && ident.len() == 1 => Kind::Ident,
                 Token::Ident(
                     epsilon!(pat) | delta_lower!(pat) | sigma_upper!(pat) | gamma_upper!(pat),
                 ) => Kind::Keyword,
