@@ -189,7 +189,7 @@ export type Tm = {
   type: "tm";
 
   initial_state: State;
-  initial_tape: Symbol;
+  blank_symbol: Symbol;
   states: Map<State, StateInfo>;
   symbols: Map<Symbol, SymbolInfo>;
   alphabet: Map<Letter, LetterInfo>;

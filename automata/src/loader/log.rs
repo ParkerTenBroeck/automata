@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use crate::loader::Span;
 
-
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Logs {
     logs: Vec<LogEntry>,

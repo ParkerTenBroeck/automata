@@ -77,7 +77,9 @@ impl<'a> Spanned<Item<'a>> {
     pub fn expect_ident(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(ident)) => return Some(ident),
-            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected ident found epsilon", self.1),
+            Item::Symbol(Symbol::Epsilon(_)) => {
+                _ = ctx.emit_error("expected ident found epsilon", self.1)
+            }
             Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
             Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
         }
@@ -86,8 +88,12 @@ impl<'a> Spanned<Item<'a>> {
 
     pub fn expect_set(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected set found ident", self.1),
-            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected set found epsilon", self.1),
+            Item::Symbol(Symbol::Ident(_)) => {
+                _ = ctx.emit_error("expected set found ident", self.1)
+            }
+            Item::Symbol(Symbol::Epsilon(_)) => {
+                _ = ctx.emit_error("expected set found epsilon", self.1)
+            }
             Item::Tuple(_) => _ = ctx.emit_error("expected set found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
@@ -96,8 +102,12 @@ impl<'a> Spanned<Item<'a>> {
 
     pub fn expect_list(&self, ctx: &mut Context<'a>) -> Option<&[Spanned<Item<'a>>]> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected list found ident", self.1),
-            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected list found epsilon", self.1),
+            Item::Symbol(Symbol::Ident(_)) => {
+                _ = ctx.emit_error("expected list found ident", self.1)
+            }
+            Item::Symbol(Symbol::Epsilon(_)) => {
+                _ = ctx.emit_error("expected list found epsilon", self.1)
+            }
             Item::Tuple(_) => _ = ctx.emit_error("expected list found tuple", self.1),
             Item::List(list) => return Some(&list.0),
         }
@@ -120,8 +130,12 @@ impl<'a> Spanned<Item<'a>> {
 
     pub fn expect_tuple(&self, ctx: &mut Context<'a>) -> Option<Spanned<&Tuple<'a>>> {
         match &self.0 {
-            Item::Symbol(Symbol::Ident(_)) => _ = ctx.emit_error("expected tuple found ident", self.1),
-            Item::Symbol(Symbol::Epsilon(_)) => _ = ctx.emit_error("expected tuple found epsilon", self.1),
+            Item::Symbol(Symbol::Ident(_)) => {
+                _ = ctx.emit_error("expected tuple found ident", self.1)
+            }
+            Item::Symbol(Symbol::Epsilon(_)) => {
+                _ = ctx.emit_error("expected tuple found epsilon", self.1)
+            }
             Item::Tuple(tuple) => return Some(Spanned(tuple, self.1)),
             Item::List(_) => _ = ctx.emit_error("expected tuple found list", self.1),
         }
