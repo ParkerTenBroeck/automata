@@ -193,8 +193,8 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                 self.ctx.emit_error(format!("unknown item {name:?}, expected states | symbols | final states | initial state | blank symbol"), dest_s);
             }
 
-            TL::TransitionFunc(S((S(delta_lower!(pat), _), args), _), list) => {
-                self.compile_transition_function(args, list)
+            TL::TransitionFunc(S((S(delta_lower!(pat), _), args), func), list) => {
+                self.compile_transition_function(args, func, list)
             }
             TL::TransitionFunc(S((S(name, _), _), dest_s), _) => {
                 self.ctx.emit_error(
@@ -349,6 +349,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
     fn compile_transition_function(
         &mut self,
         args: Spanned<ast::Tuple<'a>>,
+        function: Span,
         list: Spanned<ast::Item<'a>>,
     ) {
         let list = list.set_weak();
@@ -398,7 +399,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                 symbol: Symbol(to_tape.0),
                 direction: direction.0,
 
-                function: args.1,
+                function,
                 transition: item.1,
             }) {
                 self.ctx.emit_warning("duplicate transition", item.1);

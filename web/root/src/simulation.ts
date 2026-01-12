@@ -11,8 +11,9 @@ import {parse_machine_from_json} from "./automata.ts";
 
 export type SimStepResult = "pending" | "accept" | "reject";
 export type Sim = FaSim | PdaSim | TmSim;
-let simulation: Sim | null = null;
-let automaton: Machine = {
+
+export let simulation: Sim | null = null;
+export let automaton: Machine = {
   type: "fa",
   alphabet: new Map(),
   final_states: new Map(),
@@ -28,7 +29,7 @@ bus.on("compiled", ({ machine }) => {
     try {
       bus.emit("controls/sim/clear", undefined);
       automaton = parse_machine_from_json(machine);
-      bus.emit("automata/update", { automaton });
+      bus.emit("automata/update", automaton);
     } catch (e) {
       console.log(e);
     }
@@ -36,7 +37,7 @@ bus.on("compiled", ({ machine }) => {
 });
 bus.on("controls/sim/clear", (_) => {
   simulation = null;
-  bus.emit("automata/sim/update", { simulation: null });
+  bus.emit("automata/sim/update", null);
 });
 bus.on("controls/sim/step", (_) => {
   if (simulation) {
@@ -48,7 +49,7 @@ bus.on("controls/sim/step", (_) => {
   }
 });
 const machineInput = document.getElementById("machineInput") as HTMLInputElement;
-machineInput.addEventListener("input", () => bus.emit("automata/sim/update", {simulation: null}));
+machineInput.addEventListener("input", () => bus.emit("controls/sim/clear", undefined));
 machineInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     bus.emit("controls/sim/reload", undefined)
@@ -67,10 +68,10 @@ bus.on("controls/sim/reload", (_) => {
       simulation = new TmSim(automaton as Tm, input);
       break;
   }
-  bus.emit("automata/sim/update", { simulation });
+  bus.emit("automata/sim/update", simulation);
 });
 const simulationStatus = document.getElementById("simulationStatus") as HTMLInputElement;
-bus.on("automata/sim/update", ({simulation}) => {
+bus.on("automata/sim/update", simulation => {
   if (!simulation){
     simulationStatus.innerText = "N/A"
     simulationStatus.style.color = "var(--fg-2)";
