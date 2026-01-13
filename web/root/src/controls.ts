@@ -92,6 +92,7 @@ class Controls {
     bus.on("automata/sim/update", simulation => {
       Controls.simulation_active = !!simulation;
       if (!simulation) Controls.stop();
+      Controls.updateButtons();
     });
 
     bus.on("automata/sim/after_step", ({ result }) => {
