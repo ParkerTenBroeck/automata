@@ -8,7 +8,7 @@
 
     <link rel="icon" type="image/x-icon" href="icon.jpg">
     <link href="style.css" rel="stylesheet">
-<script src="./index-THI65PDD.js" type="module" crossorigin></script></head>
+<script src="./index-KEQ3NCWD.js" type="module" crossorigin></script></head>
 
 <body>
     <div class="centered" id="center_text">
@@ -48,10 +48,43 @@
                 <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>
 
                 <div class="flexCenter sidePadding" style="font-size: calc(16px);font-weight: bold;color: var(--fg-1)">
-                    <span style="margin-right: 0.5em;">Status: </span><span style="color: var(--fg-2)" id="simulationStatus">N/A</span>
+                    <span style="margin-right: 0.5em;">Status: </span><span style="color: var(--fg-2)"
+                        id="simulationStatus">N/A</span>
                 </div>
                 <div class="flexCenter sidePadding">
                     <input id="machineInput" type="text" class="test-input" placeholder="Enter machine input…" />
+                </div>
+
+                <div class="hSplit styleOnly" title="Drag to resize canvas height"></div>
+                
+                <div class="sidePadding scroll">
+                    <div class="pathsGrid">
+
+                        <details class="group group-accepted">
+                            <summary class="groupTitle" open>
+                                <span>Accepted</span>
+                                <span class="count" id="acceptedCount">0</span>
+                            </summary>
+                            <div class="groupBody" id="acceptedPaths"></div>
+                        </details>
+
+                        <details class="group group-running" open>
+                            <summary class="groupTitle">
+                                <span>Running</span>
+                                <span class="count" id="runningCount">0</span>
+                            </summary>
+                            <div class="groupBody" id="runningPaths"></div>
+                        </details>
+
+                        <details class="group group-rejected" open>
+                            <summary class="groupTitle">
+                                <span>Rejected</span>
+                                <span class="count" id="rejectedCount">0</span>
+                            </summary>
+                            <div class="groupBody" id="rejectedPaths"></div>
+                        </details>
+
+                    </div>
                 </div>
 
             </section>
@@ -80,7 +113,7 @@
 
 
                 <button id="stepSim" class="btn btn-yellow" title="Advance one step">
-                   ⏭ Step
+                    ⏭ Step
                 </button>
                 <button id="playPauseSim" class="btn btn-green" title="Run / pause simulation">
                     ▶ Play
