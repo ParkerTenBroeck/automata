@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 use super::Spanned;
 
@@ -23,6 +23,7 @@ pub enum Symbol<'a> {
 #[derive(Clone, Debug)]
 pub enum Item<'a> {
     Symbol(Symbol<'a>),
+    String(Cow<'a, str>),
     Tuple(Tuple<'a>),
     List(List<'a>),
 }
@@ -46,7 +47,14 @@ pub enum Regex<'a> {
 pub struct List<'a>(pub Vec<Spanned<Item<'a>>>, pub ListKind);
 
 #[derive(Clone, Debug)]
-pub struct ProductionGroup<'a>(pub Vec<Spanned<Symbol<'a>>>);
+pub enum ProductionUnit<'a> {
+    Epsilon(&'a str),
+    Ident(&'a str),
+    String(Cow<'a, str>),
+}
+
+#[derive(Clone, Debug)]
+pub struct ProductionGroup<'a>(pub Vec<Spanned<ProductionUnit<'a>>>);
 
 #[derive(Clone, Debug)]
 pub enum TopLevel<'a> {
@@ -70,6 +78,7 @@ impl<'a> Spanned<Item<'a>> {
             Item::Symbol(sym) => return Some(*sym),
             Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
             Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
+            Item::String(_) => _ = ctx.emit_error("expected ident found string", self.1),
         }
         None
     }
@@ -82,6 +91,7 @@ impl<'a> Spanned<Item<'a>> {
             }
             Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
             Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
+            Item::String(_) => _ = ctx.emit_error("expected ident found string", self.1),
         }
         None
     }
@@ -95,6 +105,7 @@ impl<'a> Spanned<Item<'a>> {
                 _ = ctx.emit_error("expected set found epsilon", self.1)
             }
             Item::Tuple(_) => _ = ctx.emit_error("expected set found tuple", self.1),
+            Item::String(_) => _ = ctx.emit_error("expected set found string", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
@@ -109,6 +120,7 @@ impl<'a> Spanned<Item<'a>> {
                 _ = ctx.emit_error("expected list found epsilon", self.1)
             }
             Item::Tuple(_) => _ = ctx.emit_error("expected list found tuple", self.1),
+            Item::String(_) => _ = ctx.emit_error("expected list found string", self.1),
             Item::List(list) => return Some(&list.0),
         }
         None
@@ -138,6 +150,7 @@ impl<'a> Spanned<Item<'a>> {
             }
             Item::Tuple(tuple) => return Some(Spanned(tuple, self.1)),
             Item::List(_) => _ = ctx.emit_error("expected tuple found list", self.1),
+            Item::String(_) => _ = ctx.emit_error("expected tuple found string", self.1),
         }
         None
     }

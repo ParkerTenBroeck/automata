@@ -1,5 +1,13 @@
 use crate::loader::{Span, Spanned};
 
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Default)]
+pub enum StringKind{
+    #[default]
+    Regular,
+    Regex
+}
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum Token<'a> {
     LPar,
@@ -14,6 +22,7 @@ pub enum Token<'a> {
     Tilde,
     Eq,
     Comma,
+    Dash,
 
     Or,
     Plus,
@@ -26,6 +35,8 @@ pub enum Token<'a> {
     Comment(&'a str),
 
     Ident(&'a str),
+
+    String(&'a str, StringKind, bool),
     LineEnd,
 }
 
@@ -43,13 +54,19 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::Comma => write!(f, "','"),
             Token::Or => write!(f, "'|'"),
             Token::Plus => write!(f, "'+'"),
+            Token::Dash => write!(f, "'-'"),
             Token::Star => write!(f, "'*'"),
             Token::And => write!(f, "'&'"),
             Token::LSmallArrow => write!(f, "'->'"),
             Token::LBigArrow => write!(f, "'=>'"),
             Token::Comment(_) => write!(f, "<comment>"),
+            
             Token::Ident(ident) if f.alternate() => write!(f, "{ident:?}"),
             Token::Ident(_) => write!(f, "ident"),
+            
+            Token::String(string, kind, _) if f.alternate() => write!(f, "{}{string:?}", if *kind==StringKind::Regex {"r"} else {""}),
+            Token::String(_, _, _) => write!(f, "string"),
+            
             Token::LineEnd => write!(f, "eol"),
         }
     }
@@ -65,6 +82,7 @@ pub struct Lexer<'a> {
 pub enum Error {
     InvalidChar(char),
     UnclosedMultiLine,
+    UnclosedString,
 }
 
 impl<'a> Lexer<'a> {
@@ -145,8 +163,22 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                     self.consume();
                     Ok(Token::LSmallArrow)
                 }
-                _ => Err(Error::InvalidChar('-')),
+                _ => Ok(Token::Dash),
             },
+            '"' => {
+                let mut escaped = false;
+                loop {
+                    match self.consume() {
+                        Some('"') => break Ok(Token::String(&self.input[start+1..self.position], StringKind::Regular, escaped)),
+                        None => break Err(Error::UnclosedString),
+                        Some('\\') => {
+                            _ = self.consume();
+                            escaped = true;
+                        },
+                        _ => {}
+                    }
+                }
+            }
 
             '/' => match self.consume() {
                 Some('/') => loop {
