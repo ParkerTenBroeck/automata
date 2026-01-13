@@ -398,7 +398,7 @@ function renderNode({
         const lineH = 14;
 
         let w = 0;
-        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.toString()).width);
+        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.repr).width);
         const boxW = w + padX * 2;
         const boxH = paths.length * lineH + padY * 2;
 
@@ -415,7 +415,7 @@ function renderNode({
         ctx.textBaseline = "top";
         for (let i = 0; i < paths.length; i++) {
           ctx.fillStyle = paths[i].accepted ? t.current_node_border : t.fg_0;
-          ctx.fillText(paths[i].toString(), x, by + padY + i * lineH);
+          ctx.fillText(paths[i].repr, x, by + padY + i * lineH);
         }
       }
 

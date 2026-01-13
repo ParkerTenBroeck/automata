@@ -3,12 +3,11 @@ use std::collections::HashSet;
 use super::*;
 
 use crate::{
-    delta_lower, dual_struct_serde,
-    loader::{
+    delta_lower, dual_struct_serde, gamma_upper, loader::{
         BLANK_SYMBOL, Context, INITIAL_STATE, Spanned,
         ast::{self, Symbol as Sym},
         log::LogSink,
-    },
+    }
 };
 dual_struct_serde! {
     #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -23,8 +22,11 @@ dual_struct_serde! {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
+    #[serde(rename = "<")]
     Left,
+    #[serde(rename = ">")]
     Right,
+    #[serde(rename = "_")]
     None,
 }
 
@@ -185,7 +187,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
         use ast::TopLevel as TL;
         match element {
             TL::Item(S("Q", _), list) => self.compile_states(list, span),
-            TL::Item(S(delta_lower!(pat), _), list) => self.compile_symbols(list, span),
+            TL::Item(S(gamma_upper!(pat), _), list) => self.compile_symbols(list, span),
             TL::Item(S("F", _), list) => self.compile_final_states(list, span),
             TL::Item(S(INITIAL_STATE, _), item) => self.compile_initial_state(item, span),
             TL::Item(S(BLANK_SYMBOL, _), item) => self.compile_blank_symbol(item, span),
@@ -335,11 +337,11 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                         .emit_error("blank symbol already set", top_level)
                         .emit_help("previously defined here", previous);
                 }
-                if self.states.contains_key(&State(ident)) {
+                if self.symbols.contains_key(&Symbol(ident)) {
                     self.blank_symbol = Some((Symbol(ident), top_level))
                 } else {
                     self.ctx
-                        .emit_error("blank symbol not defined as a state", src_d);
+                        .emit_error("blank symbol not defined as a symbol", src_d);
                 }
             }
             _ => _ = self.ctx.emit_error("expected ident", src_d),

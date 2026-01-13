@@ -100,11 +100,11 @@ export type State = string;
 export type Symbol = string;
 export type Letter = string;
 
-export type Span = [number, number];
+export type Span = readonly [number, number];
 
-export type StateInfo = { definition: Span };
-export type LetterInfo = { definition: Span };
-export type SymbolInfo = { definition: Span };
+export type StateInfo = { readonly definition: Span };
+export type LetterInfo = { readonly definition: Span };
+export type SymbolInfo = { readonly definition: Span };
 
 export type FaTransFrom = {
   state: State;
@@ -112,16 +112,16 @@ export type FaTransFrom = {
 };
 
 export type FaTransTo = {
-  state: State;
+  readonly state: State;
 
-  transition: Span;
-  function: Span;
+  readonly transition: Span;
+  readonly function: Span;
 };
 
 export type Edge = {
-  repr: string;
-  function: Span;
-  transition: Span;
+  readonly repr: string;
+  readonly function: Span;
+  readonly transition: Span;
 };
 
 export type Fa = {
@@ -139,17 +139,17 @@ export type Fa = {
 };
 
 export type PdaTransFrom = {
-  state: State;
-  letter: Letter | null;
-  symbol: Symbol;
+  readonly state: State;
+  readonly letter: Letter | null;
+  readonly symbol: Symbol;
 };
 
 export type PdaTransTo = {
-  state: State;
-  stack: Symbol[];
+  readonly state: State;
+  readonly stack: readonly Symbol[];
 
-  transition: Span;
-  function: Span;
+  readonly transition: Span;
+  readonly function: Span;
 };
 
 export type Pda = {
@@ -172,17 +172,17 @@ export type Pda = {
 };
 
 export type TmTransFrom = {
-  state: State;
-  symbol: Symbol;
+  readonly state: State;
+  readonly symbol: Symbol;
 };
 
 export type TmTransTo = {
-  state: State;
-  symbol: Symbol;
-  direction: "L" | "R" | "N";
+  readonly state: State;
+  readonly symbol: Symbol;
+  readonly direction: "<" | ">" | "_";
 
-  transition: Span;
-  function: Span;
+  readonly transition: Span;
+  readonly function: Span;
 };
 
 export type Tm = {
