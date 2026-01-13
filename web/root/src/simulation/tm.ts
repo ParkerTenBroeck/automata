@@ -7,6 +7,7 @@ import type {
 import { SimStepResult } from "../simulation.ts";
 
 
+export type Step = TmTransTo & {from_state: State, from_symbol: Symbol}
 export type TmState = {
   readonly state: State;
   readonly tape: Symbol[];
@@ -15,7 +16,7 @@ export type TmState = {
   readonly accepted: boolean;
   readonly repr: string;
 
-  readonly path: readonly TmTransTo[];
+  readonly path: readonly Step[];
 }
 
 
@@ -69,7 +70,7 @@ export class TmSim {
       state: to.state,
       accepted: this.machine.final_states.has(to.state),
 
-      path: from.path.concat([to]),
+      path: from.path.concat([{from_state: from.state, from_symbol: from.tape[from.head], ...to}]),
     };
 
     switch (to.direction) {
@@ -102,8 +103,6 @@ export class TmSim {
   }
 
   step(): SimStepResult {
-    if (this.accepted.length != 0) return "accept";
-    if (this.paths.length == 0) return "reject";
 
     const paths: TmState[] = this.paths;
     this.paths = [];
@@ -122,8 +121,12 @@ export class TmSim {
       }
     }
 
-    if (this.accepted.length != 0) return "accept";
-    if (this.paths.length == 0) return "reject";
+    return this.status();
+  }
+
+  status(): SimStepResult {
+    if (this.accepted.length !== 0) return "accept";
+    if (this.paths.length === 0) return "reject";
     return "pending";
   }
 }

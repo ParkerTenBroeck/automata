@@ -307,9 +307,7 @@ function createGraph(): vis.Network {
   });
 
   network.on('deselectEdge', item => {
-    console.log(item);
     for (const edge of item.previousSelection.edges){
-    console.log(edge);
       dehighlight_from_edge_id(edge.id)
     }
   });
@@ -320,9 +318,7 @@ function createGraph(): vis.Network {
   });
 
   network.on('deselectNode', item => {
-    console.log(item);
     for (const node of item.previousSelection.nodes){
-    console.log(node);
       dehighlight_from_node_id(node.id)
     }
   });

@@ -34,12 +34,13 @@ export let automaton: Machine = {
 bus.on("compiled", ({ machine }) => {
   if (machine) {
     try {
-      bus.emit("controls/sim/clear", undefined);
       automaton = parse_machine_from_json(machine);
       bus.emit("automata/update", automaton);
     } catch (e) {
       console.log(e);
     }
+  }else{
+    bus.emit("controls/sim/clear", undefined);
   }
 });
 bus.on("controls/sim/clear", (_) => {
@@ -83,20 +84,21 @@ bus.on("automata/sim/update", simulation => {
     simulationStatus.innerText = "N/A"
     simulationStatus.style.color = "var(--fg-2)";
   }else{
-    simulationStatus.innerText = "Pending"
-    simulationStatus.style.color = "var(--warning)";
+    update_status(simulation.status())
   }
 });
 bus.on("automata/sim/after_step", ({result}) => {
-  if (result === "pending"){
+  update_status(result)
+});
+function update_status(status: SimStepResult){
+  if (status === "pending"){
     simulationStatus.innerText = "Pending"
     simulationStatus.style.color = "var(--warning)";
-  }else if (result==="accept"){
+  }else if (status==="accept"){
     simulationStatus.innerText = "Accepted"
     simulationStatus.style.color = "var(--success)";
-  }else if (result==="reject"){
+  }else if (status==="reject"){
     simulationStatus.innerText = "Rejected"
     simulationStatus.style.color = "var(--error)";
   }
-});
-
+}
