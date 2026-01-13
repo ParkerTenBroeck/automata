@@ -19,6 +19,7 @@ pub fn init() {
 pub enum Kind {
     Ident = "ident",
     Keyword = "keyword",
+    String = "string",
     Error = "error",
     Comment = "comment",
     Punc = "punc",
@@ -77,11 +78,13 @@ pub fn lex(input: &str) -> Vec<Tok> {
                 Token::Comma => Kind::Punc,
                 Token::Or => Kind::Punc,
                 Token::Plus => Kind::Punc,
+                Token::Dash => Kind::Punc,
                 Token::Star => Kind::Punc,
                 Token::And => Kind::Punc,
                 Token::LSmallArrow => Kind::Punc,
                 Token::LBigArrow => Kind::Punc,
                 Token::Comment(_) => Kind::Comment,
+                Token::String(_, _, _) => Kind::String,
                 Token::Ident(_)
                     if input[..start_utf8]
                         .split("\n")

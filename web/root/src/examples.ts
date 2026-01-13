@@ -7,7 +7,8 @@ export type Category =
   | "DPDA"
   | "NPDA"
   | "TM"
-  | "NTM";
+  | "NTM"
+  | "CFG";
 
 export class Example {
   readonly category: Category;
@@ -48,6 +49,56 @@ d(qb, b) = qb
 
 d(qb', a) = qb'
 d(qb', b) = qb`,
+  ),
+
+    new Example(
+    "Tutorial",
+    "NFA",
+    `// strings of 1's whos length is divisible by two or three and longer than 1
+
+type   = NFA                          // type of machine
+Q      = {q0, q2, q2f, q3, q3', q3f}  // set of states 
+E      = {1}                          // alphabet
+F      = {q2f, q3f}                   // set of final states
+q0     = q0                           // initial state
+
+// transition function (state, letter) -> state
+
+// non deterministic part
+d(q0, 1) = q2
+d(q0, 1) = q3
+
+d(q2, 1) = q2f
+d(q2f, 1) = q2
+
+d(q3, 1) = q3'
+d(q3', 1) = q3f
+d(q3f, 1) = q3
+`,
+  ),
+
+  new Example(
+    "Tutorial",
+    "NFA w/ epsilon",
+    `// strings containing only all a's, or all b's, or all c's
+
+type   = NFA               // type of machine
+Q      = {q0, qa, qb, qc}  // set of states 
+E      = {a, b, c}         // alphabet
+F      = {qa, qb, qc}      // set of final states
+q0     = q0                // initial state
+
+// transition function (state, letter) -> state
+
+// non deterministic part
+d(q0, epsilon) = qa
+d(q0, epsilon) = qb
+d(q0, epsilon) = qc
+
+d(qa, a) = qa
+d(qb, b) = qb
+d(qc, c) = qc
+`,
   ),
 
   new Example(
@@ -127,10 +178,19 @@ d(q0, b, A)  =   (q0, [B A])
 d(q0, a, B)  =   (q0, [A B])
 d(q0, b, B)  =   (q0, [B B])
 
-// transition to q1
+// transition to q1 
+// even
 d(q0, epsilon, z0)  =   { (q1, z0) }
 d(q0, epsilon, A)   =   { (q1, A)  }
 d(q0, epsilon, B)   =   { (q1, B)  }
+// odd
+d(q0, a, z0)  =   { (q1, z0) }
+d(q0, a, A)   =   { (q1, A)  }
+d(q0, a, B)   =   { (q1, B)  }
+
+d(q0, b, z0)  =   { (q1, z0) }
+d(q0, b, A)   =   { (q1, A)  }
+d(q0, b, B)   =   { (q1, B)  }
 
 // consume stack until empty
 d(q1, a, A)         =   { (q1, epsilon) }
@@ -186,6 +246,35 @@ d(q2,X)=(q0,x,R)
 d(q0,Y)=(q3,y,R)
 d(q3,Y)=(q3,y,R)
 d(q3,B)=(q4,B,R)
+`),
+
+  new Example("CFG", "definition",
+    `// CFG's aren't supported yet, and this definition is not complete.
+// This is the definition for the grammar the definition has itself
+
+type=CFG
+
+S -> TopLevel | TopLevel S
+
+TopLevel -> Ident "=" Item // Item 
+TopLevel -> Ident Tuple "=" Item // Transition Functions
+TopLevel -> Production | Table
+ 
+Item -> Symbol | String | Tuple | List
+
+Symbol -> Ident | "~"
+String -> "\"" "\""
+Tuple -> "(" ItemList ")"
+List -> "{" ItemList "}" | "[" ItemList "]"
+
+ItemList -> ~ | Item ItemList | Item "," ItemList
+
+Production -> ProductionGroup "->" ProductionGroupList
+ProductionGroupList -> ProductionGroup | ProductionGroupList "|" ProductionGroup 
+ProductionGroup -> ProductionUnit | ProductionGroup ProductionUnit 
+ProductionUnit -> Ident | "~" | String
+
+
 `)
 ];
 
@@ -197,6 +286,7 @@ const CATEGORY_ORDER: Category[] = [
   "NPDA",
   "TM",
   "NTM",
+  "CFG",
 ];
 
 function buildExamplesDropdown(

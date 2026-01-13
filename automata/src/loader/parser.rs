@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::epsilon;
 use crate::loader::log::LogSink;
 use crate::loader::{Context, Span};
@@ -139,19 +141,38 @@ impl<'a, 'b> Parser<'a, 'b> {
         S(Tuple(items), start.join(end))
     }
 
+    fn parse_as_string(&mut self, tok: S<T<'a>>) -> S<Cow<'a, str>>{
+        let (r, k, e, s) = match tok {
+            S(T::String(r, k, e), s) => (r, k, e, s),
+            S(t, s) => {
+                self.ctx.emit_error(format!("unexpected {:#} expected {:}", t, T::String("", Default::default(), false)), s);
+                return S("<INVALID>".into(), s)
+            }
+        };
+
+        S(r.into(), s)
+    }
+    
+    fn parse_string(&mut self) -> S<Cow<'a, str>>{
+        let tok = self.next_token();
+        self.parse_as_string(tok)
+    }
+
     fn parse_item(&mut self) -> S<Item<'a>> {
         match self.peek_token().0 {
             T::Ident(_) | T::Tilde => self.parse_symbol().map(Item::Symbol),
+            T::String(_, _, _) => self.parse_string().map(Item::String),
             T::LPar => self.parse_tupple().map(Item::Tuple),
             T::LBrace | T::LBracket => self.parse_list().map(Item::List),
             _ => {
                 let S(got, span) = self.next_token();
                 self.ctx.emit_error(
                     format!(
-                        "unexpected {:#} expected item ( {:} | {:} | {:} | {:} | {:} )",
+                        "unexpected {:#} expected item ( {:} | {:} | {:} | {:} | {:} | {:} )",
                         got,
                         T::Tilde,
                         T::Ident(""),
+                        T::String("", Default::default(), false),
                         T::LPar,
                         T::LBrace,
                         T::LBracket,
@@ -225,11 +246,39 @@ impl<'a, 'b> Parser<'a, 'b> {
         todo!()
     }
 
-    fn parse_production_rule(&mut self, S(sym, start): S<Symbol<'a>>) -> Option<S<TopLevel<'a>>> {
+    fn parse_as_production_unit(&mut self, tok: S<T<'a>>) -> S<ProductionUnit<'a>>{
+        match tok {
+            S(T::Tilde, r) => S(ProductionUnit::Epsilon("~"), r),
+            S(T::Ident(repr @ epsilon!(pat)), r) => S(ProductionUnit::Epsilon(repr), r),
+            S(T::Ident(ident), r) => S(ProductionUnit::Ident(ident), r),
+            S(T::String(_, _, _), _) => self.parse_as_string(tok).map(ProductionUnit::String),
+            S(got, span) => {
+                self.ctx.emit_error(
+                    format!(
+                        "unexpected {:#} expected production unit ( {:} | {:} | {:} )",
+                        got,
+                        T::Tilde,
+                        T::Ident(""),
+                        T::String("", Default::default(), false)
+                    ),
+                    span,
+                );
+                S(ProductionUnit::Ident("<INVALID>"), span)
+            }
+        }
+
+    }
+    
+    fn parse_production_unit(&mut self) -> S<ProductionUnit<'a>>{
+        let tok = self.next_token();
+        self.parse_as_production_unit(tok)
+    }
+
+    fn parse_production_rule(&mut self, S(sym, start): S<ProductionUnit<'a>>) -> Option<S<TopLevel<'a>>> {
         let mut lhs_group = ProductionGroup(vec![S(sym, start)]);
         let mut lhs_group_end = start;
         while !matches!(self.peek_token().0, T::LSmallArrow | T::LineEnd) {
-            let sym = self.parse_symbol();
+            let sym = self.parse_production_unit();
             lhs_group_end = sym.1;
             lhs_group.0.push(sym);
         }
@@ -248,7 +297,7 @@ impl<'a, 'b> Parser<'a, 'b> {
         loop {
             let mut group = ProductionGroup(vec![]);
             while !matches!(self.peek_token().0, T::LineEnd | T::Or) {
-                group.0.push(self.parse_symbol());
+                group.0.push(self.parse_production_unit());
             }
 
             if group.0.is_empty() {
@@ -327,10 +376,10 @@ impl<'a, 'b> Parser<'a, 'b> {
                 }
                 // production rule
                 (
-                    sym @ S(T::Ident(_) | T::Tilde, _),
+                    sym @ S(T::Ident(_) | T::Tilde | T::String(_, _, _), _),
                     S(T::LSmallArrow | T::Ident(_) | T::Tilde, _),
                 ) => {
-                    let sym = self.parse_as_symbol(sym);
+                    let sym = self.parse_as_production_unit(sym);
                     if let Some(pr) = self.parse_production_rule(sym) {
                         break Some(pr);
                     }
