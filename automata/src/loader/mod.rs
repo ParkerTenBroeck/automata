@@ -35,7 +35,7 @@ pub const BLANK_SYMBOL: &str = "B";
 #[macro_export]
 macro_rules! epsilon {
     ($ident: ident) => {
-      $crate::maker!($ident: "epsilon","~", "Ɛ", "ε", "ϵ", "𝛆", "𝛜", "𝜀", "𝜖", "𝜺", "𝝐", "𝝴", "𝞊", "𝞮", "𝟄")
+      $crate::maker!($ident: "epsilon","~", "Ɛ", "ε", "ϵ", "𝛆", "𝛜", "𝜀", "𝜖", "𝜺", "𝝐", "𝝴", "𝞊", "𝞮", "𝟄", "ɛ")
     };
 }
 
@@ -49,7 +49,7 @@ macro_rules! delta_lower {
 #[macro_export]
 macro_rules! sigma_upper {
     ($ident: ident) => {
-      $crate::maker!($ident: "E","S", "sigma","Σ","𝚺", "𝛴", "𝜮", "𝝨", "𝞢")
+      $crate::maker!($ident: "E","S", "sigma","Σ","𝚺", "𝛴", "𝜮", "𝝨", "𝞢", "∑")
     };
 }
 
