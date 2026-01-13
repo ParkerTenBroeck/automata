@@ -8,5 +8,6 @@ import "./visualizer.ts"
 import "./editor.ts"
 import "./simulation.ts"
 import "./terminal.ts"
+import "./paths.ts"
 
 bus.emit("begin", undefined);

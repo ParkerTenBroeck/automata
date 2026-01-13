@@ -3,6 +3,7 @@
 @use "loading.scss";
 @use "controls.scss";
 @use "themes.scss";
+@use "paths.scss";
 
 html,
 body {
@@ -32,6 +33,10 @@ body {
 .vscroll {
   height: 100%;
   overflow-y: scroll;
+}
+
+.scroll{
+  overflow: scroll;
 }
 
 .flexCol{

@@ -1,0 +1,147 @@
+/* ===== Panel ===== */
+
+.panel {
+  border: 1px solid var(--separator-bg);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.panelTitle {
+  cursor: pointer;
+  list-style: none;
+
+  padding: var(--space-3) var(--space-4);
+  font-weight: 700;
+  color: var(--fg-0);
+
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--separator-bg);
+}
+
+.panelTitle::-webkit-details-marker {
+  display: none;
+}
+
+/* ===== Layout ===== */
+
+.pathsGrid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* ===== Groups ===== */
+
+.group {
+  border: 1px solid var(--separator-bg);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.groupTitle {
+  cursor: pointer;
+  list-style: none;
+
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+
+  font-weight: 600;
+  color: var(--fg-0);
+
+  background: var(--bg-2);
+}
+
+.groupTitle::-webkit-details-marker {
+  display: none;
+}
+
+.count {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+
+  color: var(--fg-muted);
+  background: var(--bg-1);
+  border: 1px solid var(--separator-bg);
+}
+
+.groupBody {
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ===== Path cards ===== */
+
+.pathItem {
+  border: 1px solid var(--separator-bg);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.pathHeader {
+  cursor: pointer;
+  list-style: none;
+
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+
+  color: var(--fg-0);
+  background: var(--bg-2);
+}
+
+.pathHeader::-webkit-details-marker {
+  display: none;
+}
+
+.pathMeta {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* ===== Steps ===== */
+
+.steps {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.stepLine {
+  font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  color: var(--fg-1);
+  background: var(--bg-2);
+
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+
+  // overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* ===== Semantic accents ===== */
+
+.group-accepted {
+  border-color: color-mix(in srgb, var(--success) 35%, var(--separator-bg));
+}
+
+.group-running {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--separator-bg));
+}
+
+.group-rejected {
+  border-color: color-mix(in srgb, var(--error) 35%, var(--separator-bg));
+}

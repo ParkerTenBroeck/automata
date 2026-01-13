@@ -5,7 +5,10 @@ import type {
     Symbol
 } from "../automata.ts";
 import { SimStepResult } from "../simulation.ts";
+import { EPSILON } from "../constants.ts";
 
+
+export type Step = PdaTransTo & {from_state: State, from_letter: string, from_stack: Symbol}
 export type PdaState = {
     readonly state: State;
     readonly stack: Symbol[];
@@ -14,7 +17,7 @@ export type PdaState = {
     readonly accepted: boolean;
     readonly repr: string;
 
-    readonly path: readonly PdaTransTo[];
+    readonly path: readonly Step[];
 };
 
 type Initializer<T> = { -readonly [P in keyof T]?: T[P] | undefined };
@@ -80,7 +83,7 @@ export class PdaSim {
         this.init_state(state);
     }
 
-    private transition(from: PdaState, to: PdaTransTo, consume: boolean) {
+    private transition(from: PdaState, to: PdaTransTo, letter: string|undefined) {
         const stackCopy = from.stack.slice(0, from.stack.length - 1); // pop off top
         const nextStack = stackCopy.concat(to.stack);
         if (nextStack.length == 0) {
@@ -91,16 +94,14 @@ export class PdaSim {
         const state: Initializer<PdaState> = {
             state: to.state,
             stack: nextStack,
-            position: from.position + (consume ? 1 : 0),
-            path: from.path.concat([to]),
+            position: from.position + (letter ? 1 : 0),
+            path: from.path.concat([{from_state: from.state, from_letter: letter??EPSILON, from_stack: from.stack[from.stack.length-1], ...to}]),
         };
 
         this.init_state(state);
     }
 
     step(): SimStepResult {
-        if (this.accepted.length !== 0) return "accept";
-        if (this.paths.length === 0) return "reject";
 
         const paths = this.paths;
         this.paths = [];
@@ -118,7 +119,7 @@ export class PdaSim {
             // epsilon transitions
             const epsilon_transitions = letterMap.get(null) ?? [];
             for (const to of epsilon_transitions) {
-                this.transition(from, to, false);
+                this.transition(from, to, undefined);
             }
 
             if (from.position >= this.input.length) {
@@ -132,13 +133,17 @@ export class PdaSim {
 
             const transitions = letterMap.get(ch) ?? [];
             for (const to of transitions) {
-                this.transition(from, to, true);
+                this.transition(from, to, ch);
             }
             if (epsilon_transitions.length == 0 && transitions.length == 0){
                 this.rejected.push(from);
             }
         }
+        
+        return this.status();
+    }
 
+    status(): SimStepResult {
         if (this.accepted.length !== 0) return "accept";
         if (this.paths.length === 0) return "reject";
         return "pending";
