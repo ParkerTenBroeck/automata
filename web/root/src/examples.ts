@@ -51,7 +51,7 @@ d(qb', a) = qb'
 d(qb', b) = qb`,
   ),
 
-    new Example(
+  new Example(
     "Tutorial",
     "NFA",
     `// strings of 1's whos length is divisible by two or three and longer than 1
@@ -79,7 +79,7 @@ d(q3f, 1) = q3
 
   new Example(
     "Tutorial",
-    "NFA w/ epsilon",
+    "NFA with epsilon",
     `// strings containing only all a's, or all b's, or all c's
 
 type   = NFA               // type of machine
@@ -100,6 +100,150 @@ d(qb, b) = qb
 d(qc, c) = qc
 `,
   ),
+
+  new Example(
+    "Tutorial",
+    "DPDA Final State",
+    `// Accept strings over a,b of the form a^nb^k n != k n,k > 0
+
+type   = DPDA
+Q      = {q0, qas, qeq, qmb, qlb} // states
+E      = {a, b}                   // alphabet
+T      = {z0, A}                  // stack
+F      = {qmb, qlb}               // final states
+accept = F                        // accept by final state
+q0 = q0
+z0 = z0
+
+d(q0, a, z0) = (qas, z0)
+
+d(qas, a, z0) = (qas, [A z0])
+d(qas, b, z0) = (qeq, z0)
+d(qas, a, A) = (qas, [A A])
+d(qas, b, A) = (qlb, ~)
+
+d(qlb, b, A) = (qeq, ~)
+d(qlb, b, z0) = (qeq, z0)
+
+d(qeq, b, z0) = (qmb, z0)
+
+d(qmb, b, z0) = (qmb, z0)`,
+  ),
+
+  new Example(
+    "Tutorial",
+    "DPDA Empty Stack",
+    `// Accept strings over a,b which are of form a^n b^n 
+
+type   = DPDA
+Q      = {qa, qb} // states
+E      = {a, b}       // alphabet
+T      = {Z0, A}      // stack
+accept = N            // accept by empty stack
+q0 = qa
+z0 = Z0
+
+
+// build stack of A's (equal to a's encountered)
+d(qa, a, Z0) = (qa, [A Z0])
+d(qa, a, A) = (qa, [A A])
+
+// transition to b state once a b is encountered
+d(qa, b, A) = (qb, ~)
+
+// consume b's until A's run out
+d(qb, b, A) = (qb, ~)`,
+  ),
+
+  // new Example(
+  //   "Tutorial",
+  //   "NPDA Final State",
+  //   ``,
+  // ),
+
+  new Example(
+    "Tutorial",
+    "NPDA Empty Stack",
+    `// Accept all strings over a,b which are spelt the same backwards and forwards
+
+type=NPDA
+Q = {q0, q1}   // states
+E = {a, b}     // alphabet
+T = {Z0, A, B} // stack
+accept = E     // accept by empty stack
+q0 = q0
+z0 = Z0
+
+// push letters we see to stack
+d(q0, a, Z0)  =   (q0, [A Z0])
+d(q0, b, Z0)  =   (q0, [B Z0])
+
+d(q0, a, A)  =   (q0, [A A])
+d(q0, b, A)  =   (q0, [B A])
+
+d(q0, a, B)  =   (q0, [A B])
+d(q0, b, B)  =   (q0, [B B])
+
+// transition to q1 
+// even
+d(q0, epsilon, Z0)  =   { (q1, Z0) }
+d(q0, epsilon, A)   =   { (q1, A)  }
+d(q0, epsilon, B)   =   { (q1, B)  }
+// odd
+d(q0, a, Z0)  =   { (q1, Z0) }
+d(q0, a, A)   =   { (q1, A)  }
+d(q0, a, B)   =   { (q1, B)  }
+
+d(q0, b, Z0)  =   { (q1, Z0) }
+d(q0, b, A)   =   { (q1, A)  }
+d(q0, b, B)   =   { (q1, B)  }
+
+// consume stack until empty
+d(q1, a, A)         =   { (q1, epsilon) }
+d(q1, b, B)         =   { (q1, epsilon) }`,
+  ),
+
+  new Example(
+    "Tutorial",
+    "TM",
+    `// Accept strings over a,b,c of the form a^n b^n c^n, n > 0
+
+type   = TM
+Q      = {q1, q2, q3, q4, q5, q6, qf} // states
+T      = {a, b,c, B, X, Y, Z}         // stack
+F      = {qf}                         // final states
+q0 = q1
+B = B
+
+d(q1, a) = (q2, X, R)
+d(q1, Y) = (q5, Y, R)
+
+d(q2, a) = (q2, a, R)
+d(q2, b) = (q3, Y, R)
+d(q2, Y) = (q2, Y, R)
+
+d(q3, b) = (q3, b, R)
+d(q3, c) = (q4, Z, L)
+d(q3, Z) = (q3, Z, R)
+
+d(q4, a) = (q4, a, L)
+d(q4, b) = (q4, b, L)
+d(q4, X) = (q1, X, R)
+d(q4, Y) = (q4, Y, L)
+d(q4, Z) = (q4, Z, L)
+
+d(q5, Y) = (q5, Y, R)
+d(q5, Z) = (q6, Z, R)
+
+d(q6, B) = (qf, B, R)
+d(q6, Z) = (q6, Z, R)`,
+  ),
+
+  // new Example(
+  //   "Tutorial",
+  //   "NTM",
+  //   ``,
+  // ),
 
   new Example(
     "DFA",
@@ -317,7 +461,7 @@ function buildExamplesDropdown(
 
   // Optional: sort titles within each group
   for (const [cat, list] of grouped) {
-    list.sort((a, b) => a.title.localeCompare(b.title));
+    // list.sort((a, b) => a.title.localeCompare(b.title));
     grouped.set(cat, list);
   }
 
