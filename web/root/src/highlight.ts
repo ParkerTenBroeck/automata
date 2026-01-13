@@ -57,12 +57,20 @@ bus.on("automata/update", _ => {
     bus.emit("highlight/all/remove", undefined);
 })
 
+function decoForKind(kind: HighlightKind): string {
+    return `cm-highlight-${kind}`;
+}
+
 bus.on("highlight/one/add", (highlight) => {
     const key = asKey(highlight);
     if (current.has(key)) {
         current.get(key)!.count += 1;
     } else {
         current.set(key, { count: 1, ...highlight });
+        
+        const cname = decoForKind(highlight.kind);
+        globalThis.document.querySelectorAll(`[highlight-span="${highlight.span[0]}:${highlight.span[1]}"]`).forEach(el => el.classList.add(cname))
+
         bus.emit("highlight/update", undefined);
     }
 });
@@ -73,6 +81,10 @@ bus.on("highlight/one/remove", (highlight) => {
         value.count -= 1;
         if (value.count === 0) {
             current.delete(key);
+
+            const cname = decoForKind(highlight.kind);
+            globalThis.document.querySelectorAll(`[highlight-span="${highlight.span[0]}:${highlight.span[1]}"]`).forEach(el => el.classList.remove(cname))
+
             bus.emit("highlight/update", undefined);
         }
     }
@@ -80,6 +92,24 @@ bus.on("highlight/one/remove", (highlight) => {
 bus.on("highlight/all/remove", (_) => {
     if (current.size !== 0) {
         current.clear();
+
+        const warning = decoForKind("warning");
+        const focus = decoForKind("focus");
+        const success = decoForKind("success");
+        const error = decoForKind("error");
+        globalThis.document.querySelectorAll(`[highlight-span"]`).forEach(el => {
+            el.classList.remove(warning)
+            el.classList.remove(focus)
+            el.classList.remove(success)
+            el.classList.remove(error)
+        })
+
+
         bus.emit("highlight/update", undefined);
     }
 });
+
+
+export function highlightable(span: Span, text: string): string{
+  return `<span class = "cm-highlight" highlight-span="${span[0]}:${span[1]}">${text}</span>`
+}

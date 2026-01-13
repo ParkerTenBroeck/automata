@@ -1,14 +1,12 @@
 import { bus } from "./bus.ts";
 import { DELTA } from "./constants.ts";
+import { highlightable } from "./highlight.ts";
 import type { Sim } from "./simulation.ts";
 import type { FaState } from "./simulation/fa.ts";
 import type { PdaState } from "./simulation/pda.ts";
 import type { TmState } from "./simulation/tm.ts";
 
-type AnyState = {
-  repr: string;
-  path: readonly unknown[];
-};
+
 
 function renderFaPath(state: FaState, index: number) {
   const details = document.createElement("details");
@@ -30,7 +28,11 @@ function renderFaPath(state: FaState, index: number) {
     const div = document.createElement("div");
     div.className = "stepLine";
     const step = state.path[i];
-    div.textContent = `${i + 1}. ${DELTA}(${step.from_state}, ${step.from_letter}) = ${step.state}`;
+    
+    div.innerHTML = `${i + 1}. ` 
+      + highlightable(step.function, `${DELTA}(${step.from_state})`) 
+      + " = " 
+      + highlightable(step.transition, step.state);
     steps.appendChild(div);
   }
 
@@ -59,7 +61,11 @@ function renderPdaPath(state: PdaState, index: number) {
     const div = document.createElement("div");
     div.className = "stepLine";
     const step = state.path[i];
-    div.textContent = `${i + 1}. ${DELTA}(${step.from_state}, ${step.from_letter}, , ${step.from_stack}) = (${step.state}, [ ${step.stack.join(" ")} ])`;
+
+    div.innerHTML = `${i + 1}. ` 
+      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_letter}, , ${step.from_stack})`) 
+      + " = " 
+      + highlightable(step.transition, `(${step.state}, [ ${step.stack.join(" ")} ])`);
     steps.appendChild(div);
   }
 
@@ -88,7 +94,13 @@ function renderTmPath(state: TmState, index: number) {
     const div = document.createElement("div");
     div.className = "stepLine";
     const step = state.path[i];
-    div.textContent = `${i + 1}. ${DELTA}(${step.from_state}, ${step.from_symbol}) = (${step.state}, ${step.symbol}, ${step.direction})`;
+    div.setAttribute("highlight-span", "${}")
+
+    div.innerHTML = `${i + 1}. ` 
+      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_symbol})`) 
+      + " = " 
+      + highlightable(step.transition, `(${step.state}, ${step.symbol}, ${step.direction})`);
+    console.log(div.innerHTML);
     steps.appendChild(div);
   }
 
@@ -117,6 +129,7 @@ export function renderPaths(sim: Sim | undefined) {
   const acceptedCount = document.getElementById("acceptedCount")!;
   const runningCount = document.getElementById("runningCount")!;
   const rejectedCount = document.getElementById("rejectedCount")!;
+
 
   acceptedEl.innerHTML = "";
   runningEl.innerHTML = "";
