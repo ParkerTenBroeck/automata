@@ -27,11 +27,11 @@ export const examples: readonly Example[] = [
     "DFA",
     `// strings over a,b which start and end with different letters
 
-type = DFA                     // type of machine DFA, NFA, DPDA, NPDA, DTM, NTM 
-Q    = {q0, qa, qa', qb, qb'}  // set of states 
-E    = {a, b}                  // alphabet
-F    = {qa', qb'}              // set of final states
-q0   = q0                      // initial state
+type   = DFA                     // type of machine DFA, NFA, DPDA, NPDA, DTM, NTM 
+Q      = {q0, qa, qa', qb, qb'}  // set of states 
+E      = {a, b}                  // alphabet
+F      = {qa', qb'}              // set of final states
+q0     = q0                      // initial state
 
 // transition function (state, letter) -> state
 d(q0, a) = qa
@@ -81,11 +81,12 @@ d(q4, 3) = q2`,
   new Example(
     "DPDA",
     "unequal",
-    `type=DPDA
-Q = {q0, qas, qeq, qmb, qlb} // states
-E = {a, b}                   // alphabet
-T = {z0, A}                  // stack
-F = {qmb, qlb}               // final states
+    `type   = DPDA
+Q      = {q0, qas, qeq, qmb, qlb} // states
+E      = {a, b}                   // alphabet
+T      = {z0, A}                  // stack
+F      = {qmb, qlb}               // final states
+accept = F                        // accept by final state
 q0 = q0
 z0 = z0
 
@@ -112,6 +113,7 @@ d(qmb, b, z0) = (qmb, z0)`,
 Q = {q0, q1} // states
 E = {a, b} // alphabet
 T = {z0, A, B} // stack
+accept = E // accept by empty stack
 q0 = q0
 z0 = z0
 
@@ -142,6 +144,7 @@ d(q1, b, B)         =   { (q1, epsilon) }`,
 Q = {q0, q1} // states
 E = {a, b} // alphabet
 T = {z0, A, B} // stack
+accept = E // accept by empty stack
 q0 = q0
 z0 = z0
 
@@ -160,6 +163,30 @@ d(q0, epsilon, B)   =   { (q1, B)  }
 d(q1, a, A)         =   { (q1, epsilon) }
 d(q1, b, B)         =   { (q1, epsilon) }`,
   ),
+
+  new Example("TM", "a^nb^n",
+    `// accepts all strings on {a,b}+ of the form anbn
+
+type = TM
+Q = { q0, q1, q2, q3, q4 } // set of internal states
+F = { q4 }                 // set of final states
+T = { a, b, X, Y, B }      // tape alphabet
+B = B                      // the blank symbol (tape initializer symbol)
+q0 = q0                    // initial state
+
+d(q0,a)=(q1,x,R)
+d(q1,a)=(q1,a,R)
+d(q1,Y)=(q1,y,R)
+d(q1,b)=(q2,y,L) 
+
+d(q2,Y)=(q2,y,L)
+d(q2,a)=(q2,a,L)
+d(q2,X)=(q0,x,R)
+
+d(q0,Y)=(q3,y,R)
+d(q3,Y)=(q3,y,R)
+d(q3,B)=(q4,B,R)
+`)
 ];
 
 const CATEGORY_ORDER: Category[] = [
@@ -242,5 +269,5 @@ function buildExamplesDropdown(
 
 const selectEl = document.getElementById("exampleSelect") as HTMLSelectElement;
 buildExamplesDropdown(selectEl, examples, (example) => {
-  bus.emit("example/selected", {example});
+  bus.emit("example/selected", example);
 });

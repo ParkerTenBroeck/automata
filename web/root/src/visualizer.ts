@@ -3,46 +3,42 @@
 import * as vis from "npm:vis-network/standalone";
 
 import { bus } from "./bus.ts";
-import type { Sim } from "./simulation.ts";
-import type { Machine } from "./automata.ts";
+import { automaton, simulation } from "./simulation.ts";
+import { dehighlight_from_edge_id, dehighlight_from_node_id, highlight_from_edge_id, highlight_from_node_id } from "./highlight.ts";
 
 
-bus.on("controls/vis/physics", ({enabled}) => {
+bus.on("controls/vis/physics", ({ enabled }) => {
   network.setOptions({ physics: { enabled } });
-  network.setOptions({edges: {smooth: enabled}});
+  network.setOptions({ edges: { smooth: enabled } });
 });
 bus.on("controls/vis/reset_network", _ => {
-    try {
-        nodes.forEach((n) => {
-          n.physics = true;
-          n.x = undefined;
-          n.y = undefined;
-        });
-        network.setData({ nodes, edges });
-    } catch {
-      // Last resort
-      network.setData({ nodes, edges });
-    }
+  try {
+    nodes.forEach((n) => {
+      n.physics = true;
+      n.x = undefined;
+      n.y = undefined;
+    });
+    network.setData({ nodes, edges });
+  } catch {
+    // Last resort
+    network.setData({ nodes, edges });
+  }
 });
 
 bus.on("automata/sim/after_step", _ => {
   network.redraw();
 });
 
-let simulation: Sim | null = null;
-bus.on("automata/sim/update", ({simulation: sim}) => {
-  simulation = sim;
+bus.on("automata/sim/update", _ => {
   network.redraw();
 });
 
-let automaton: Machine
+bus.on("automata/update", automaton => {
 
-bus.on("automata/update", ({automaton: auto}) => {
-  automaton = auto;
   // Populate nodes
   for (const state of automaton.states.keys()) {
-    
-    const size = measureTextWidth(state, getGraphTheme().node_font)/2+10
+
+    const size = measureTextWidth(state, getGraphTheme().node_font) / 2 + 10
     if (nodes.get(state)) {
       nodes.update({
         id: state,
@@ -62,20 +58,20 @@ bus.on("automata/update", ({automaton: auto}) => {
   for (const [edge_id, transitions] of automaton.edges) {
     const to_from = edge_id.split("#");
     const vadjust = -getGraphTheme().edge_font_size *
-        Math.floor(transitions.length / 2);
+      Math.floor(transitions.length / 2);
     const font = {
       vadjust,
-        bold: {
-          vadjust
-        }
-    };    
+      bold: {
+        vadjust
+      }
+    };
     if (edges.get(edge_id)) {
       edges.update({
         id: edge_id,
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
+        label: transitions.map(i => i.repr).join(automaton.type == "fa" ? "," : "\n"),
       });
     } else {
       edges.add({
@@ -83,7 +79,7 @@ bus.on("automata/update", ({automaton: auto}) => {
         font,
         from: to_from[0],
         to: to_from[1],
-        label: transitions.map(i => i.repr).join(automaton.type=="fa"?",":"\n"),
+        label: transitions.map(i => i.repr).join(automaton.type == "fa" ? "," : "\n"),
       });
     }
   }
@@ -238,22 +234,6 @@ function measureTextWidth(text: string, font: string): number {
   return ctx.measureText(text).width;
 }
 
-function chosen_edge(
-  _: vis.ChosenNodeValues,
-  id: vis.IdType,
-  selected: boolean,
-  hovered: boolean,
-) {
-}
-
-function chosen_node(
-  _: vis.ChosenNodeValues,
-  id: vis.IdType,
-  selected: boolean,
-  hovered: boolean,
-) {
-}
-
 const network: vis.Network = createGraph();
 
 function createGraph(): vis.Network {
@@ -286,16 +266,9 @@ function createGraph(): vis.Network {
         shape: "custom",
         size: 18,
         // @ts-expect-error  bad library
-        chosen: {
-          node: chosen_node,
-        },
         ctxRenderer: renderNode,
       },
       edges: {
-        chosen: {
-          // @ts-expect-error bad library
-          edge: chosen_edge,
-        },
         arrowStrikethrough: false,
         arrows: "to",
       },
@@ -303,11 +276,54 @@ function createGraph(): vis.Network {
   );
   vis.DataSet;
 
-  network.on("doubleClick", (params: {nodes: string[]}) => {
+  network.on("doubleClick", (params: { nodes: string[] }) => {
     for (const node_id of params.nodes) {
       const node: vis.Node = nodes.get(node_id)!;
       node.physics = !node.physics;
       nodes.update(node);
+    }
+  });
+
+  network.on("hoverEdge", ({ edge }: { edge: string }) => {
+    highlight_from_edge_id(edge)
+  });
+
+  network.on('blurEdge', ({edge}: {edge: string}) => {
+    dehighlight_from_edge_id(edge)
+  });
+
+  network.on("hoverNode", ({ node }: { node: string }) => {
+    highlight_from_node_id(node);
+  });
+
+  network.on('blurNode', ({ node }: { node: string }) => {
+    dehighlight_from_node_id(node)
+  });
+
+
+  network.on("selectEdge", item => {
+    const id = network.getEdgeAt(item.pointer.DOM);
+    if(id)highlight_from_edge_id(id as string);
+  });
+
+  network.on('deselectEdge', item => {
+    console.log(item);
+    for (const edge of item.previousSelection.edges){
+    console.log(edge);
+      dehighlight_from_edge_id(edge.id)
+    }
+  });
+
+  network.on("selectNode", item => {
+    const id = network.getNodeAt(item.pointer.DOM);
+    if(id)highlight_from_node_id(id as string);
+  });
+
+  network.on('deselectNode', item => {
+    console.log(item);
+    for (const node of item.previousSelection.nodes){
+    console.log(node);
+      dehighlight_from_node_id(node.id)
     }
   });
 
@@ -323,7 +339,7 @@ function renderNode({
   state: { selected, hover },
   style,
   label,
-}: {ctx: CanvasRenderingContext2D, id: string, x: number, y: number, state: {selected: boolean, hover: boolean}, style: vis.NodeOptions, label: string}) {
+}: { ctx: CanvasRenderingContext2D, id: string, x: number, y: number, state: { selected: boolean, hover: boolean }, style: vis.NodeOptions, label: string }) {
   return {
     drawNode() {
       const t = getGraphTheme();
@@ -333,7 +349,7 @@ function renderNode({
       const isFinal = automaton.final_states
         ? automaton.final_states.has(id)
         : false;
-      const isActive = simulation?simulation.current_states.has(id):false;
+      const isActive = simulation ? simulation.current_states.has(id) : false;
 
       const fill = selected ? t.bg_2 : hover ? t.bg_1 : t.bg_0;
       const stroke = isActive ? t.current_node_border : t.node_border;
@@ -345,7 +361,7 @@ function renderNode({
 
       ctx.save();
 
-      ctx.font = hover||selected?t.node_font_bold:t.node_font;
+      ctx.font = hover || selected ? t.node_font_bold : t.node_font;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -382,7 +398,7 @@ function renderNode({
         const lineH = 14;
 
         let w = 0;
-        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.toString()).width);
+        for (const ln of paths) w = Math.max(w, ctx.measureText(ln.repr).width);
         const boxW = w + padX * 2;
         const boxH = paths.length * lineH + padY * 2;
 
@@ -398,8 +414,8 @@ function renderNode({
 
         ctx.textBaseline = "top";
         for (let i = 0; i < paths.length; i++) {
-          ctx.fillStyle = paths[i].accepted?t.current_node_border:t.fg_0;
-          ctx.fillText(paths[i].toString(), x, by + padY + i * lineH);
+          ctx.fillStyle = paths[i].accepted ? t.current_node_border : t.fg_0;
+          ctx.fillText(paths[i].repr, x, by + padY + i * lineH);
         }
       }
 

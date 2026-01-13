@@ -1,10 +1,11 @@
 // deno-lint-ignore-file
 
-import type { Machine } from "./automata.ts";
+import type { Machine, Span } from "./automata.ts";
 import type { Example } from "./examples.ts";
 import type { Sim, SimStepResult } from "./simulation.ts";
 import type wasm from "./wasm.ts";
 import type { Text } from "npm:@codemirror/state";
+import type { Highlight } from "./highlight.ts";
 
 type Unsubscribe = () => void;
 
@@ -69,14 +70,14 @@ type AppEvents = {
   "editor/change": {text: string, doc: Text};
   "compiled": {log: wasm.CompileLog[], ansi_log: string, machine: string|undefined};
 
-  "automata/sim/update": { simulation: Sim|null };
+  "automata/sim/update": Sim|null;
   "automata/sim/before_step": { simulation: Sim };
   "automata/sim/after_step": { simulation: Sim, result: SimStepResult };
-  "automata/update": { automaton: Machine };
+  "automata/update": Machine;
 
-  "example/selected": {example: Example};
+  "example/selected": Example;
 
-  "controls/editor/set_text": {text: string};
+  "controls/editor/set_text": string;
   
   "controls/vis/physics": {enabled: boolean};
   "controls/vis/reset_network": void;
@@ -84,6 +85,12 @@ type AppEvents = {
   "controls/sim/step": void;
   "controls/sim/reload": void;
   "controls/sim/clear": void;
+
+  "highlight/one/add": Highlight;
+  "highlight/one/remove": Highlight;
+  "highlight/all/remove": void;
+
+  "highlight/update": void;
 
   "theme/update": void;
 };

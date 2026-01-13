@@ -93,7 +93,7 @@ impl<'a, 'b> Parser<'a, 'b> {
     fn parse_as_symbol(&mut self, tok: S<T<'a>>) -> S<Symbol<'a>> {
         match tok {
             S(T::Tilde, r) => S(Symbol::Epsilon("~"), r),
-            S(T::Ident(repr@ epsilon!(pat)), r) => S(Symbol::Epsilon(repr), r),
+            S(T::Ident(repr @ epsilon!(pat)), r) => S(Symbol::Epsilon(repr), r),
             S(T::Ident(ident), r) => S(Symbol::Ident(ident), r),
             S(got, span) => {
                 self.ctx.emit_error(

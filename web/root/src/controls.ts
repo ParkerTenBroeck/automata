@@ -89,7 +89,7 @@ class Controls {
       if (Controls.running) Controls.setRunning(false);
     });
 
-    bus.on("automata/sim/update", ({ simulation }) => {
+    bus.on("automata/sim/update", simulation => {
       Controls.simulation_active = !!simulation;
       if (!simulation) Controls.stop();
     });

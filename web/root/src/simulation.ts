@@ -1,18 +1,26 @@
 import { bus } from "./bus.ts";
 import type {
-  Fa,
   Machine,
+  Fa,
   Pda,
-  State,
-  Symbol,
   Tm,
 } from "./automata.ts";
 import {parse_machine_from_json} from "./automata.ts";
 
+import { FaSim } from "./simulation/fa.ts";
+export { FaSim } from "./simulation/fa.ts";
+
+import { PdaSim } from "./simulation/pda.ts";
+export { PdaSim } from "./simulation/pda.ts";
+
+import { TmSim } from "./simulation/tm.ts";
+export { TmSim } from "./simulation/tm.ts";
+
 export type SimStepResult = "pending" | "accept" | "reject";
 export type Sim = FaSim | PdaSim | TmSim;
-let simulation: Sim | null = null;
-let automaton: Machine = {
+
+export let simulation: Sim | null = null;
+export let automaton: Machine = {
   type: "fa",
   alphabet: new Map(),
   final_states: new Map(),
@@ -28,7 +36,7 @@ bus.on("compiled", ({ machine }) => {
     try {
       bus.emit("controls/sim/clear", undefined);
       automaton = parse_machine_from_json(machine);
-      bus.emit("automata/update", { automaton });
+      bus.emit("automata/update", automaton);
     } catch (e) {
       console.log(e);
     }
@@ -36,7 +44,7 @@ bus.on("compiled", ({ machine }) => {
 });
 bus.on("controls/sim/clear", (_) => {
   simulation = null;
-  bus.emit("automata/sim/update", { simulation: null });
+  bus.emit("automata/sim/update", null);
 });
 bus.on("controls/sim/step", (_) => {
   if (simulation) {
@@ -48,7 +56,7 @@ bus.on("controls/sim/step", (_) => {
   }
 });
 const machineInput = document.getElementById("machineInput") as HTMLInputElement;
-machineInput.addEventListener("input", () => bus.emit("automata/sim/update", {simulation: null}));
+machineInput.addEventListener("input", () => bus.emit("controls/sim/clear", undefined));
 machineInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     bus.emit("controls/sim/reload", undefined)
@@ -67,10 +75,10 @@ bus.on("controls/sim/reload", (_) => {
       simulation = new TmSim(automaton as Tm, input);
       break;
   }
-  bus.emit("automata/sim/update", { simulation });
+  bus.emit("automata/sim/update", simulation);
 });
 const simulationStatus = document.getElementById("simulationStatus") as HTMLInputElement;
-bus.on("automata/sim/update", ({simulation}) => {
+bus.on("automata/sim/update", simulation => {
   if (!simulation){
     simulationStatus.innerText = "N/A"
     simulationStatus.style.color = "var(--fg-2)";
@@ -92,234 +100,3 @@ bus.on("automata/sim/after_step", ({result}) => {
   }
 });
 
-export class FaState {
-  readonly state: State;
-
-  readonly position: number;
-  readonly input: string;
-  readonly accepted: boolean = false;
-  private repr!: string;
-
-  constructor(state: State, position: number, input: string) {
-    this.state = state;
-    this.position = position;
-    this.input = input;
-  }
-
-  toString(): string {
-    if (!this.repr) {
-      this.repr = this.state + " >" + this.input.substring(this.position);
-    }
-    return this.repr;
-  }
-}
-
-export class FaSim {
-  machine: Fa;
-  paths: FaState[];
-  input: string;
-
-  current_states: Map<string, FaState[]> = new Map();
-  accepted: FaState[] = [];
-
-  constructor(machine: Fa, input: string) {
-    this.machine = machine;
-    this.paths = [new FaState(machine.initial_state, 0, input)];
-    this.current_states.set(machine.initial_state, [this.paths[0]]);
-    this.input = input;
-  }
-
-  step(): SimStepResult {
-    if (this.paths.length == 0) return "reject";
-    if (this.accepted.length != 0) return "accept";
-
-    const paths: FaState[] = [];
-    this.current_states.clear();
-
-    const push = (state: FaState) => {
-      paths.push(state);
-      if (!this.current_states.has(state.state)) {
-        this.current_states.set(state.state, []);
-      }
-      this.current_states.get(state.state)?.push(state);
-
-      if (
-        state.position == this.input.length &&
-        this.machine.final_states.has(state.state)
-      ) {
-        // @ts-expect-error sillllyyyy
-        state.accepted = true;
-        this.accepted.push(state);
-      }
-    };
-
-    for (const path of this.paths) {
-      const letter_map = this.machine.transitions_components.get(path.state)!;
-      if (!letter_map) continue;
-
-      for (const to of letter_map.get(null) ?? []) {
-        push(new FaState(to.state, path.position, this.input));
-      }
-
-      if (path.position >= this.input.length) continue;
-
-      const char = this.input.charAt(path.position);
-
-      for (const to of letter_map.get(char) ?? []) {
-        push(new FaState(to.state, path.position + 1, this.input));
-      }
-    }
-    this.paths = paths;
-
-    if (this.paths.length == 0) return "reject";
-    if (this.accepted.length != 0) return "accept";
-    return "pending";
-  }
-}
-
-export class PdaState {
-  readonly state: State;
-  readonly stack: Symbol[];
-
-  readonly position: number;
-  readonly input: string;
-  readonly accepted: boolean = false;
-  private repr!: string;
-
-  constructor(state: State, stack: Symbol[], position: number, input: string) {
-    this.state = state;
-    this.stack = stack;
-    this.position = position;
-    this.input = input;
-  }
-
-  toString(): string {
-    if (!this.repr) {
-      this.repr = this.state + " [" + this.stack + "]" + " >" +
-        this.input.substring(this.position);
-    }
-    return this.repr;
-  }
-}
-
-export class PdaSim {
-  machine: Pda;
-  paths: PdaState[];
-  input: string;
-
-  current_states: Map<string, PdaState[]> = new Map();
-  accepted: PdaState[] = [];
-
-  constructor(machine: Pda, input: string) {
-    this.machine = machine;
-    this.paths = [
-      new PdaState(machine.initial_state, [machine.initial_stack], 0, input),
-    ];
-    this.current_states.set(machine.initial_state, [this.paths[0]]);
-    this.input = input;
-  }
-
-  step(): SimStepResult {
-    if (this.paths.length == 0) return "reject";
-    if (this.accepted.length != 0) return "accept";
-
-    const paths: PdaState[] = [];
-    this.current_states.clear();
-
-    const push = (state: PdaState) => {
-      paths.push(state);
-      if (!this.current_states.has(state.state)) {
-        this.current_states.set(state.state, []);
-      }
-      this.current_states.get(state.state)?.push(state);
-
-      if (
-        state.position == this.input.length && this.machine.final_states &&
-          this.machine.final_states.has(state.state) ||
-        state.position == this.input.length && !this.machine.final_states &&
-          state.stack.length == 1 &&
-          state.stack[0] == this.machine.initial_stack
-      ) {
-        // @ts-expect-error sillllyyyy
-        state.accepted = true;
-        this.accepted.push(state);
-      }
-    };
-
-    for (const path of this.paths) {
-      const stack = path.stack.pop()!;
-      const letter_map = this.machine.transitions_components.get(path.state)
-        ?.get(stack);
-      if (!letter_map) continue;
-
-      for (const to of letter_map.get(null) ?? []) {
-        push(
-          new PdaState(
-            to.state,
-            path.stack.concat(to.stack),
-            path.position,
-            this.input,
-          ),
-        );
-      }
-
-      if (path.position >= this.input.length) continue;
-
-      const char = this.input.charAt(path.position);
-
-      for (const to of letter_map.get(char) ?? []) {
-        push(
-          new PdaState(
-            to.state,
-            path.stack.concat(to.stack),
-            path.position + 1,
-            this.input,
-          ),
-        );
-      }
-    }
-    this.paths = paths;
-
-    if (this.paths.length == 0) return "reject";
-    if (this.accepted.length != 0) return "accept";
-    return "pending";
-  }
-}
-
-export class TmState {
-  readonly state: State;
-  readonly tape: Symbol[];
-
-  readonly position: number;
-  readonly input: string;
-  readonly accepted: boolean = false;
-  private repr!: string;
-
-  constructor(state: State, tape: Symbol[], position: number, input: string) {
-    this.state = state;
-    this.tape = tape;
-    this.position = position;
-    this.input = input;
-  }
-
-  toString(): string {
-    if (!this.repr) this.repr = this.state + " " + this.position;
-    return this.repr;
-  }
-}
-
-export class TmSim {
-  machine: Tm;
-  input: string;
-  current_states: Map<string, TmState[]> = new Map();
-  accepted: TmState[] = [];
-
-  constructor(machine: Tm, input: string) {
-    this.machine = machine;
-    this.input = input;
-  }
-
-  step(): SimStepResult {
-    return "pending";
-  }
-}
