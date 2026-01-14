@@ -25,7 +25,8 @@ import wasm from "./wasm.ts";
 import { Share } from "./share.ts";
 import { examples } from "./examples.ts";
 import { bus } from "./bus.ts";
-import { current, Highlight, HighlightKind } from "./highlight.ts";
+import { current, Highlight, highlight_span_attr, HighlightKind } from "./highlight.ts";
+import { Machine, parse_machine_from_json, Span } from "./automata.ts";
 
 function tokenize(text: string): wasm.Tok[] {
   try {
@@ -38,55 +39,15 @@ function tokenize(text: string): wasm.Tok[] {
 
 function compile(
   text: string,
-): { log: wasm.CompileLog[]; ansi_log: string; machine: string | undefined } {
+): { log: wasm.CompileLog[]; ansi_log: string; machine: Machine | undefined } {
   try {
-    return wasm.compile(text);
+    const res = wasm.compile(text);
+    return {machine: res.machine ? parse_machine_from_json(res.machine):undefined, log: res.log, ansi_log: res.ansi_log};
   } catch (e) {
     console.log(e);
-    return { log: [], ansi_log: "", machine: "" };
+    return { log: [], ansi_log: "", machine: undefined };
   }
 }
-
-
-function decoForKind(kind: HighlightKind) {
-  // Use a class per kind so each gets a distinct color via CSS
-  return Decoration.mark({ class: `cm-highlight cm-highlight-${kind}` });
-}
-
-bus.on("highlight/update", _ => {
-  const arr = current.values().toArray().sort((a, b) => a.span[0]-b.span[0]);
-  editor.dispatch({ effects: setHighlights.of(arr) });
-});
-export const setHighlights = StateEffect.define<Highlight[]>();
-export const highlightsField = StateField.define<DecorationSet>({
-  create() {
-    return Decoration.none;
-  },
-
-  update(highlights, tr) {
-    // Keep highlights aligned with document edits
-    highlights = highlights.map(tr.changes);
-
-    for (const e of tr.effects) {
-      if (e.is(setHighlights)) {
-        const spans = e.value;
-
-        const builder = new RangeSetBuilder<Decoration>();
-        for (const s of spans) {
-          
-          const from = Math.max(0, Math.min(s.span[0], tr.state.doc.length));
-          const to = Math.max(0, Math.min(s.span[1], tr.state.doc.length));
-          if (to > from) builder.add(from, to, decoForKind(s.kind));
-        }
-        highlights = builder.finish();
-      }
-    }
-
-    return highlights;
-  },
-
-  provide: (f) => EditorView.decorations.from(f),
-});
 
 
 const eventBusConnection = StateField.define({
@@ -140,6 +101,28 @@ function buildAnalysis(text: string, doc: Text) {
         marks.push(Decoration.mark({ class: cls }).range(start, end));
       }
     }
+  }
+
+  const addDeco = (kind: HighlightKind, highlight: Span, location?: Span) => {
+    if(!location) location = highlight;
+    marks.push(Decoration.mark({attributes: {"highlight-kind": kind, "highlight-span": highlight_span_attr(highlight)}}).range(location[0], location[1]));
+  };
+
+  for (const transitions of machine?.transitions ?? []){
+    for(const transition of transitions[1]){
+      addDeco("focus", transition.function);
+      addDeco("warning", transition.transition);
+    }
+  }
+
+  for (const state of machine?.states.values() ?? []){
+      addDeco("success", state.definition);
+  }
+
+  for (const [state, info] of machine?.final_states?.entries() ?? []){
+    try{
+      addDeco("success", machine?.states.get(state)!.definition!, info.definition);
+    }catch(e){}
   }
 
   const deco = Decoration.set(marks, true);
@@ -242,7 +225,6 @@ const state = EditorState.create({
     keymap.of([...defaultKeymap, ...historyKeymap]),
 
     eventBusConnection,
-    highlightsField,
     diagHover,
 
     EditorView.lineWrapping,

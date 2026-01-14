@@ -392,34 +392,34 @@ d(q3,Y)=(q3,y,R)
 d(q3,B)=(q4,B,R)
 `),
 
-  new Example("CFG", "definition",
-    `// CFG's aren't supported yet, and this definition is not complete.
-// This is the definition for the grammar the definition has itself
+//   new Example("CFG", "definition",
+//     `// CFG's aren't supported yet, and this definition is not complete.
+// // This is the definition for the grammar the definition has itself
 
-type=CFG
+// type=CFG
 
-S -> TopLevel | TopLevel S
+// S -> TopLevel | TopLevel S
 
-TopLevel -> Ident "=" Item // Item 
-TopLevel -> Ident Tuple "=" Item // Transition Functions
-TopLevel -> Production | Table
+// TopLevel -> Ident "=" Item // Item 
+// TopLevel -> Ident Tuple "=" Item // Transition Functions
+// TopLevel -> Production | Table
  
-Item -> Symbol | String | Tuple | List
+// Item -> Symbol | String | Tuple | List
 
-Symbol -> Ident | "~"
-String -> "\"" "\""
-Tuple -> "(" ItemList ")"
-List -> "{" ItemList "}" | "[" ItemList "]"
+// Symbol -> Ident | "~"
+// String -> "\"" "\""
+// Tuple -> "(" ItemList ")"
+// List -> "{" ItemList "}" | "[" ItemList "]"
 
-ItemList -> ~ | Item ItemList | Item "," ItemList
+// ItemList -> ~ | Item ItemList | Item "," ItemList
 
-Production -> ProductionGroup "->" ProductionGroupList
-ProductionGroupList -> ProductionGroup | ProductionGroupList "|" ProductionGroup 
-ProductionGroup -> ProductionUnit | ProductionGroup ProductionUnit 
-ProductionUnit -> Ident | "~" | String
+// Production -> ProductionGroup "->" ProductionGroupList
+// ProductionGroupList -> ProductionGroup | ProductionGroupList "|" ProductionGroup 
+// ProductionGroup -> ProductionUnit | ProductionGroup ProductionUnit 
+// ProductionUnit -> Ident | "~" | String
 
 
-`)
+// `)
 ];
 
 const CATEGORY_ORDER: Category[] = [

@@ -15,7 +15,6 @@ export type Highlight = {
 type HighlightEntry = {
     span: Span,
     kind: HighlightKind,
-    count: number;
 }
 
 export const current: Map<string, HighlightEntry> = new Map();
@@ -53,68 +52,46 @@ export function dehighlight_from_edge_id(node_id: string) {
     }
 }
 
-bus.on("automata/update", _ => {
-    bus.emit("highlight/all/remove", undefined);
-})
-
 function decoForKind(kind: HighlightKind): string {
     return `cm-highlight-${kind}`;
 }
 
 bus.on("highlight/one/add", (highlight) => {
     const key = asKey(highlight);
-    if (current.has(key)) {
-        current.get(key)!.count += 1;
-    } else {
-        current.set(key, { count: 1, ...highlight });
+    if (!current.has(key)) {
+        current.set(key, {...highlight });
         
         const cname = decoForKind(highlight.kind);
-        globalThis.document.querySelectorAll(`[highlight-span="${highlight.span[0]}:${highlight.span[1]}"]`).forEach(el => el.classList.add(cname))
+        const repr = `${highlight.span[0]}:${highlight.span[1]}`;
+        globalThis.document.querySelectorAll(`[highlight-span="${repr}"]`).forEach(el => el.classList.add(cname))
 
-        bus.emit("highlight/update", undefined);
+        bus.emit("highlight/update", {repr, remove: false, ...highlight});
     }
 });
 bus.on("highlight/one/remove", (highlight) => {
     const key = asKey(highlight);
-    if (current.has(key)) {
-        const value = current.get(key)!
-        value.count -= 1;
-        if (value.count === 0) {
-            current.delete(key);
+    if (current.delete(key)) {
+        const cname = decoForKind(highlight.kind);
+        const repr = `${highlight.span[0]}:${highlight.span[1]}`;
+        globalThis.document.querySelectorAll(`[highlight-span="${repr}"]`).forEach(el => el.classList.remove(cname))
 
-            const cname = decoForKind(highlight.kind);
-            globalThis.document.querySelectorAll(`[highlight-span="${highlight.span[0]}:${highlight.span[1]}"]`).forEach(el => el.classList.remove(cname))
-
-            bus.emit("highlight/update", undefined);
-        }
+        bus.emit("highlight/update", {repr, remove: true, ...highlight});
     }
 });
-bus.on("highlight/all/remove", (_) => {
-    if (current.size !== 0) {
-        current.clear();
 
-        const warning = decoForKind("warning");
-        const focus = decoForKind("focus");
-        const success = decoForKind("success");
-        const error = decoForKind("error");
-        globalThis.document.querySelectorAll(`[highlight-span"]`).forEach(el => {
-            el.classList.remove(warning)
-            el.classList.remove(focus)
-            el.classList.remove(success)
-            el.classList.remove(error)
-        })
-
-
-        bus.emit("highlight/update", undefined);
-    }
-});
 
 globalThis.document.addEventListener("mouseover", (e) => {
-  const target = (e.target instanceof Element)
-    ? e.target.closest("[highlight-span]")
+  if (!(e.target instanceof Element)) return;
+
+  const target = e.target.closest("[highlight-span]");
+  if (!target) return;
+
+  const related = e.relatedTarget instanceof Element
+    ? e.relatedTarget.closest("[highlight-span]")
     : null;
 
-  if (!target) return;
+  // Mouse is still inside the same highlight span → ignore
+  if (related === target) return;
 
   const kind = (target.getAttribute("highlight-kind") ?? "focus") as unknown as HighlightKind;
   const span = target.getAttribute("highlight-span")!.split(":").map(Number) as unknown as Span;
@@ -134,10 +111,14 @@ document.addEventListener("mouseout", (e) => {
 
   const kind = (from.getAttribute("highlight-kind") ?? "focus") as unknown as HighlightKind;
   const span = from.getAttribute("highlight-span")!.split(":").map(Number) as unknown as Span;
-  
+
   bus.emit("highlight/one/remove", {span, kind});
 });
 
 export function highlightable(span: Span, text: string, kind?: HighlightKind): string{
   return `<span class = "cm-highlight" ${kind ? `highlight-kind="${kind}"`:""} highlight-span="${span[0]}:${span[1]}">${text}</span>`
+}
+
+export function highlight_span_attr(span: Span): string{
+    return `${span[0]}:${span[1]}`   
 }

@@ -5,7 +5,7 @@ import type { Example } from "./examples.ts";
 import type { Sim, SimStepResult } from "./simulation.ts";
 import type wasm from "./wasm.ts";
 import type { Text } from "npm:@codemirror/state";
-import type { Highlight } from "./highlight.ts";
+import type { Highlight, HighlightKind } from "./highlight.ts";
 
 type Unsubscribe = () => void;
 
@@ -68,7 +68,7 @@ type AppEvents = {
   "begin": void;
 
   "editor/change": {text: string, doc: Text};
-  "compiled": {log: wasm.CompileLog[], ansi_log: string, machine: string|undefined};
+  "compiled": {log: wasm.CompileLog[], ansi_log: string, machine: Machine|undefined};
 
   "automata/sim/update": Sim|null;
   "automata/sim/before_step": { simulation: Sim };
@@ -88,9 +88,8 @@ type AppEvents = {
 
   "highlight/one/add": Highlight;
   "highlight/one/remove": Highlight;
-  "highlight/all/remove": void;
 
-  "highlight/update": void;
+  "highlight/update": {span: Span, kind: HighlightKind, repr: string, remove: boolean};
 
   "theme/update": void;
 };
