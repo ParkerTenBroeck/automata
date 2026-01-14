@@ -30,9 +30,9 @@ function renderFaPath(state: FaState, index: number) {
     const step = state.path[i];
     
     div.innerHTML = `${i + 1}. ` 
-      + highlightable(step.function, `${DELTA}(${step.from_state})`) 
+      + highlightable(step.function, `${DELTA}(${step.from_state})`, "focus") 
       + " = " 
-      + highlightable(step.transition, step.state);
+      + highlightable(step.transition, step.state, "warning");
     steps.appendChild(div);
   }
 
@@ -63,9 +63,9 @@ function renderPdaPath(state: PdaState, index: number) {
     const step = state.path[i];
 
     div.innerHTML = `${i + 1}. ` 
-      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_letter}, , ${step.from_stack})`) 
+      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_letter}, , ${step.from_stack})`, "focus") 
       + " = " 
-      + highlightable(step.transition, `(${step.state}, [ ${step.stack.join(" ")} ])`);
+      + highlightable(step.transition, `(${step.state}, [ ${step.stack.join(" ")} ])`, "warning");
     steps.appendChild(div);
   }
 
@@ -97,9 +97,9 @@ function renderTmPath(state: TmState, index: number) {
     div.setAttribute("highlight-span", "${}")
 
     div.innerHTML = `${i + 1}. ` 
-      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_symbol})`) 
+      + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_symbol})`, "focus") 
       + " = " 
-      + highlightable(step.transition, `(${step.state}, ${step.symbol}, ${step.direction})`);
+      + highlightable(step.transition, `(${step.state}, ${step.symbol}, ${step.direction})`, "warning");
     console.log(div.innerHTML);
     steps.appendChild(div);
   }

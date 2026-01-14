@@ -91,13 +91,14 @@ function enableFlexSplitters() {
     // --split-min-a: 80px
     // --split-min-b: 180px
     const defPct = getVarPct(splitter, "--split-default", 60);
-    const minA = getVarPx(splitter, "--split-min-a", 80);
-    const minB = getVarPx(splitter, "--split-min-b", 180);
+    const minA = getVarPx(splitter, "--split-min-a", 220);
+    const minB = getVarPx(splitter, "--split-min-b", 220);
 
     // Set initial size (A is fixed)
     {
       const r = parent.getBoundingClientRect();
       const px = clamp((defPct / 100) * r.height, minA, r.height - gap - minB);
+      console.log(r.height, px)
       setFixedSize(a, "y", px);
     }
 
@@ -199,4 +200,5 @@ function enableFlexSplitters() {
     });
   }
 }
+enableFlexSplitters();
 enableFlexSplitters();

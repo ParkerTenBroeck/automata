@@ -109,7 +109,35 @@ bus.on("highlight/all/remove", (_) => {
     }
 });
 
+globalThis.document.addEventListener("mouseover", (e) => {
+  const target = (e.target instanceof Element)
+    ? e.target.closest("[highlight-span]")
+    : null;
 
-export function highlightable(span: Span, text: string): string{
-  return `<span class = "cm-highlight" highlight-span="${span[0]}:${span[1]}">${text}</span>`
+  if (!target) return;
+
+  const kind = (target.getAttribute("highlight-kind") ?? "focus") as unknown as HighlightKind;
+  const span = target.getAttribute("highlight-span")!.split(":").map(Number) as unknown as Span;
+  
+  bus.emit("highlight/one/add", {span, kind});
+});
+
+document.addEventListener("mouseout", (e) => {
+  if (!(e.target instanceof Element)) return;
+
+  const from = e.target.closest("[highlight-span]");
+  const to = e.relatedTarget instanceof Element
+    ? e.relatedTarget.closest("[highlight-span]")
+    : null;
+
+  if (!from || from === to) return;
+
+  const kind = (from.getAttribute("highlight-kind") ?? "focus") as unknown as HighlightKind;
+  const span = from.getAttribute("highlight-span")!.split(":").map(Number) as unknown as Span;
+  
+  bus.emit("highlight/one/remove", {span, kind});
+});
+
+export function highlightable(span: Span, text: string, kind?: HighlightKind): string{
+  return `<span class = "cm-highlight" ${kind ? `highlight-kind="${kind}"`:""} highlight-span="${span[0]}:${span[1]}">${text}</span>`
 }
