@@ -1,5 +1,8 @@
 use std::fmt::Display;
 
+use unicode_display_width::width;
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::loader::Span;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -226,13 +229,17 @@ impl<'a> Display for LogEntryDisplay<'a> {
                     for _ in 0..padding + 3 {
                         write!(f, " ")?;
                     }
-                    for char in line.chars() {
+                    for grapheme in line.graphemes(true) {
                         if (span.0..span.1).contains(&index) {
-                            write!(f, "~")?;
+                            for _ in 0..width(grapheme){
+                                write!(f, "~")?;
+                            }
                         } else {
-                            write!(f, " ")?;
+                            for _ in 0..width(grapheme){
+                                write!(f, " ")?;
+                            }
                         }
-                        index += char.len_utf8();
+                        index += grapheme.len();
                     }
                     write!(f, "{RESET}")?;
                     index += '\n'.len_utf8();
