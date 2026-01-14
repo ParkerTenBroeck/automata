@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
 use automata::{
-    delta_lower, epsilon, gamma_upper,
-    loader::{self, Context, Span, Spanned, lexer::Lexer},
-    sigma_upper,
+    automatan::{fa::Fa, pda::Pda, tm::Tm}, delta_lower, epsilon, gamma_upper, loader::{self, Context, Machine, Span, Spanned, lexer::Lexer}, sigma_upper
 };
 
-use serde::Serialize;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
@@ -144,14 +141,6 @@ pub struct CompileLog {
     pub end: Option<usize>,
 }
 
-#[derive(Serialize, Debug)]
-pub struct Graph<'a> {
-    initial: &'a str,
-    final_states: Vec<&'a str>,
-    states: Vec<&'a str>,
-    transitions: HashMap<String, String>,
-}
-
 #[wasm_bindgen(getter_with_clone)]
 pub struct CompileResult {
     pub log: Vec<CompileLog>,
@@ -159,12 +148,67 @@ pub struct CompileResult {
     pub machine: Option<String>,
 }
 
+trait FixupSpan{
+    fn fixup(&mut self, func: impl FnMut(Span) -> Span);
+}
+
+impl<'a> FixupSpan for Machine<'a>{
+    fn fixup(&mut self, func: impl FnMut(Span) -> Span) {
+        match self{
+            Machine::Fa(fa) => fa.fixup(func),
+            Machine::Pda(pda) => pda.fixup(func),
+            Machine::Tm(tm) => tm.fixup(func),
+        }
+    }
+}
+impl<'a> FixupSpan for Fa<'a>{
+    fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
+        self.alphabet.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.final_states.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
+            e.transition = func(e.transition);
+            e.function = func(e.function);
+        });
+    }
+}
+
+impl<'a> FixupSpan for Pda<'a>{
+    fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
+        self.alphabet.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.symbols.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.final_states.as_mut().unwrap_or(&mut HashMap::new()).values_mut().for_each(|v| v.definition = func(v.definition));
+        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
+            e.transition = func(e.transition);
+            e.function = func(e.function);
+        });
+    }
+}
+
+impl<'a> FixupSpan for Tm<'a>{
+    fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
+        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.symbols.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.final_states.values_mut().for_each(|v| v.definition = func(v.definition));
+        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
+            e.transition = func(e.transition);
+            e.function = func(e.function);
+        });
+    }
+}
+
+
+
 #[wasm_bindgen]
 pub fn compile(input: &str) -> CompileResult {
     let mut ctx = Context::new(input);
     let result = automata::loader::parse_universal(&mut ctx);
 
-    let machine = result.map(|result| serde_json::to_string(&result).unwrap());
+    let machine = result.map(|mut result| {
+        result.fixup(|span|Span(input[..span.0].chars().map(char::len_utf16).sum(), input[..span.1].chars().map(char::len_utf16).sum()));
+        serde_json::to_string(&result).unwrap()
+    });
 
     use std::fmt::Write;
     let ansi_log = ctx.logs_display().fold(String::new(), |mut s, e| {
@@ -185,10 +229,10 @@ pub fn compile(input: &str) -> CompileResult {
             message: e.message,
             start: e
                 .span
-                .map(|span| input[..span.0].chars().map(char::len_utf16).count()),
+                .map(|span| input[..span.0].chars().map(char::len_utf16).sum()),
             end: e
                 .span
-                .map(|span| input[..span.1].chars().map(char::len_utf16).count()),
+                .map(|span| input[..span.1].chars().map(char::len_utf16).sum()),
         })
         .collect();
 

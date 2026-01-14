@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::*;
 
 use crate::{
@@ -37,6 +35,17 @@ dual_struct_serde! {
     }
 }
 
+#[derive(Hash, Clone, PartialEq, Eq)]
+struct Transition<'a> {
+    pub state: State<'a>,
+    pub stack: Vec<Symbol<'a>>,
+}
+
+struct TransitionInfo {
+    pub transition: Span,
+    pub function: Span,
+}
+
 dual_struct_serde! { {#[serde_with::serde_as]}
     #[derive(Clone, Debug)]
     pub struct Pda<'a> {
@@ -56,7 +65,7 @@ dual_struct_serde! { {#[serde_with::serde_as]}
 
         #[serde(borrow)]
         #[serde_as(as = "serde_with::Seq<(_, _)>")]
-        pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+        pub transitions: HashMap<TransitionFrom<'a>, Vec<TransitionTo<'a>>>,
     }
 }
 
@@ -86,7 +95,7 @@ pub struct PdaCompiler<'a, 'b> {
     final_states: HashMap<State<'a>, StateInfo>,
     final_states_def: Option<Span>,
 
-    transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+    transitions: HashMap<TransitionFrom<'a>, HashMap<Transition<'a>, TransitionInfo>>,
 }
 
 impl<'a> Pda<'a> {
@@ -180,12 +189,14 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             self.ctx
                 .emit_error_locless("final states never defined")
                 .emit_help_logless("add: F = {...}");
-        }else if let (Some((AcceptBy::EmptyStack, empty)), Some(states)) = (self.accept_by, self.final_states_def){
+        } else if let (Some((AcceptBy::EmptyStack, empty)), Some(states)) =
+            (self.accept_by, self.final_states_def)
+        {
             self.ctx
                 .emit_error_locless("final states defined alongside accept by empty stack")
                 .emit_help("either remote to accept by empty stack", states)
                 .emit_help("or remote to accept by final state", empty);
-            }
+        }
 
         let initial_state = match self.initial_state {
             Some(some) => some.0,
@@ -245,7 +256,23 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             symbols: self.symbols,
             alphabet: self.alphabet,
             final_states,
-            transitions: self.transitions,
+            transitions: self
+                .transitions
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        v.into_iter()
+                            .map(|(k, v)| TransitionTo {
+                                function: v.function,
+                                state: k.state,
+                                stack: k.stack,
+                                transition: v.transition,
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
         })
     }
 
@@ -554,17 +581,25 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
                     symbol: Symbol(stack_symbol.0),
                 })
                 .or_default();
-            if !entry.is_empty() && !self.options.non_deterministic {
-                self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1);
+            if let Some(entry) = entry.iter().next()
+                && !self.options.non_deterministic
+            {
+                self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1)
+                            .emit_info("previously defined here", entry.1.transition);
             }
-            if !entry.insert(TransitionTo {
-                state: State(next_state.0),
-                stack,
-                
-                function,
-                transition: item.1,
-            }) {
-                self.ctx.emit_warning("duplicate transition", item.1);
+            if let Some(previous) = entry.insert(
+                Transition {
+                    state: State(next_state.0),
+                    stack,
+                },
+                TransitionInfo {
+                    function,
+                    transition: item.1,
+                },
+            ) {
+                self.ctx
+                    .emit_warning("duplicate transition", item.1)
+                    .emit_info("previously defined here", previous.transition);
             }
         }
     }

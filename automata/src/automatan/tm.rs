@@ -1,13 +1,12 @@
-use std::collections::HashSet;
-
 use super::*;
 
 use crate::{
-    delta_lower, dual_struct_serde, gamma_upper, loader::{
+    delta_lower, dual_struct_serde, gamma_upper,
+    loader::{
         BLANK_SYMBOL, Context, INITIAL_STATE, Spanned,
         ast::{self, Symbol as Sym},
         log::LogSink,
-    }
+    },
 };
 dual_struct_serde! {
     #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -62,8 +61,20 @@ dual_struct_serde! {{#[serde_with::serde_as]}
 
         #[serde(borrow)]
         #[serde_as(as = "serde_with::Seq<(_, _)>")]
-        pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+        pub transitions: HashMap<TransitionFrom<'a>, Vec<TransitionTo<'a>>>,
     }
+}
+
+#[derive(Hash, Clone, Copy, PartialEq, Eq)]
+struct Transition<'a> {
+    pub state: State<'a>,
+    pub symbol: Symbol<'a>,
+    pub direction: Direction,
+}
+
+struct TransitionInfo {
+    pub transition: Span,
+    pub function: Span,
 }
 
 impl<'a> Tm<'a> {
@@ -92,7 +103,7 @@ pub struct TmCompiler<'a, 'b> {
     final_states: HashMap<State<'a>, StateInfo>,
     final_states_def: Option<Span>,
 
-    transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+    transitions: HashMap<TransitionFrom<'a>, HashMap<Transition<'a>, TransitionInfo>>,
 }
 
 impl<'a, 'b> TmCompiler<'a, 'b> {
@@ -178,7 +189,24 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
             states: self.states,
             symbols: self.symbols,
             final_states: self.final_states,
-            transitions: self.transitions,
+            transitions: self
+                .transitions
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        v.into_iter()
+                            .map(|(k, v)| TransitionTo {
+                                direction: k.direction,
+                                function: v.function,
+                                state: k.state,
+                                symbol: k.symbol,
+                                transition: v.transition,
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
         })
     }
 
@@ -393,18 +421,26 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                     symbol: Symbol(from_tape.0),
                 })
                 .or_default();
-            if !entry.is_empty() && !self.options.non_deterministic {
-                self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1);
+            if let Some(entry) = entry.iter().next()
+                && !self.options.non_deterministic
+            {
+                self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1)
+                            .emit_info("previously defined here", entry.1.transition);
             }
-            if !entry.insert(TransitionTo {
-                state: State(to_state.0),
-                symbol: Symbol(to_tape.0),
-                direction: direction.0,
-
-                function,
-                transition: item.1,
-            }) {
-                self.ctx.emit_warning("duplicate transition", item.1);
+            if let Some(previous) = entry.insert(
+                Transition {
+                    state: State(to_state.0),
+                    symbol: Symbol(to_tape.0),
+                    direction: direction.0,
+                },
+                TransitionInfo {
+                    function,
+                    transition: item.1,
+                },
+            ) {
+                self.ctx
+                    .emit_warning("duplicate transition", item.1)
+                    .emit_info("previously defined here", previous.transition);
             }
         }
     }
