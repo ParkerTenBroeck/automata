@@ -98,7 +98,6 @@ function enableFlexSplitters() {
     {
       const r = parent.getBoundingClientRect();
       const px = clamp((defPct / 100) * r.height, minA, r.height - gap - minB);
-      console.log(r.height, px)
       setFixedSize(a, "y", px);
     }
 

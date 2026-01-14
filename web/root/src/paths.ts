@@ -100,7 +100,7 @@ function renderTmPath(state: TmState, index: number) {
       + highlightable(step.function, `${DELTA}(${step.from_state}, ${step.from_symbol})`, "focus") 
       + " = " 
       + highlightable(step.transition, `(${step.state}, ${step.symbol}, ${step.direction})`, "warning");
-    console.log(div.innerHTML);
+  
     steps.appendChild(div);
   }
 

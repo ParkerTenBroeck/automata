@@ -5,6 +5,14 @@
 .editor {
   height: 100%;
   width: 100%;
+
+}
+
+.cm-lineWrapping{
+  word-break: keep-all!important;
+  word-wrap: normal!important;
+  white-space: nowrap!important;
+  overflow-wrap: normal!important;
 }
 
 .cm-scroller {

@@ -5,7 +5,6 @@ import type {
   Pda,
   Tm,
 } from "./automata.ts";
-import {parse_machine_from_json} from "./automata.ts";
 
 import { FaSim } from "./simulation/fa.ts";
 export { FaSim } from "./simulation/fa.ts";
@@ -34,7 +33,7 @@ export let automaton: Machine = {
 bus.on("compiled", ({ machine }) => {
   if (machine) {
     try {
-      automaton = parse_machine_from_json(machine);
+      automaton = machine;
       bus.emit("automata/update", automaton);
     } catch (e) {
       console.log(e);

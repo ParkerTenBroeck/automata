@@ -8,8 +8,7 @@ import { dehighlight_from_edge_id, dehighlight_from_node_id, highlight_from_edge
 
 
 bus.on("controls/vis/physics", ({ enabled }) => {
-  network.setOptions({ physics: { enabled } });
-  network.setOptions({ edges: { smooth: enabled } });
+  network.setOptions({nodes: {physics: enabled}});
 });
 bus.on("controls/vis/reset_network", _ => {
   try {
@@ -34,10 +33,12 @@ bus.on("automata/sim/update", _ => {
 });
 
 bus.on("automata/update", automaton => {
+  spanEdgeMap.clear();
+  spanNodeMap.clear();
 
   // Populate nodes
-  for (const state of automaton.states.keys()) {
-
+  for (const [state, value] of automaton.states.entries()) {
+    spanNodeMap.set(`${value.definition[0]}:${value.definition[1]}`, state);
     const size = measureTextWidth(state, getGraphTheme().node_font) / 2 + 10
     if (nodes.get(state)) {
       nodes.update({
@@ -65,6 +66,10 @@ bus.on("automata/update", automaton => {
         vadjust
       }
     };
+    transitions.forEach(edge => {
+      spanEdgeMap.set(`${edge.function[0]}:${edge.function[1]}`, edge_id);
+      spanEdgeMap.set(`${edge.transition[0]}:${edge.transition[1]}`, edge_id);
+    })
     if (edges.get(edge_id)) {
       edges.update({
         id: edge_id,
@@ -99,6 +104,29 @@ bus.on("automata/update", automaton => {
   }
 });
 
+bus.on("highlight/update", ({repr, remove}) => {
+  if(spanNodeMap.has(repr)){
+    const id = spanNodeMap.get(repr)!;
+    if(remove){
+        // @ts-expect-error  bad library
+      nodes.update({id, color: null});
+    }else{
+      nodes.update({id, color: getGraphTheme().current_node_border});
+    }
+  }
+  if(spanEdgeMap.has(repr)){
+    const id = spanEdgeMap.get(repr)!;
+    if(remove){
+        // @ts-expect-error  bad library
+      edges.update({id, font: null});
+    }else{
+      edges.update({id, font: {color: getGraphTheme().node_anchor}});
+    }
+  }
+})
+
+const spanEdgeMap: Map<string, string> = new Map()
+const spanNodeMap: Map<string, string> = new Map()
 
 const nodes = new vis.DataSet<vis.Node>();
 const edges = new vis.DataSet<vis.Edge>();
@@ -184,6 +212,7 @@ function updateGraphTheme() {
   network.setOptions({
     nodes: {
       labelHighlightBold: false,
+      color: gt.fg_0,
       font: {
         color: gt.fg_0,
         bold: {
@@ -378,7 +407,7 @@ function renderNode({
       }
 
       ctx.lineWidth = 2;
-      ctx.fillStyle = t.fg_0;
+      ctx.fillStyle = (style.color ?? t.fg_0) as string;
       ctx.strokeStyle = t.bg_0;
       ctx.strokeText(label, x, y);
       ctx.fillText(label, x, y);
@@ -487,7 +516,6 @@ function drawInitialArrow(
 
   ctx.restore();
 }
-
 function drawPinIndicator(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -495,55 +523,56 @@ function drawPinIndicator(
   r: number,
   color: string,
 ) {
-  const size = Math.max(7, Math.round(r * 0.28));
-  const ox = x + r - size * 0.55;
-  const oy = y + r - size * 0.55;
+const size = Math.max(7, Math.round(r * 0.28));
 
-  const stroke = color;
-  const fill = "rgba(0,0,0,0)";
+  // Position near bottom-right of node
+  const cx = x + r - size * 0.6;
+  const cy = y + r - size * 0.55;
+
+  const headRadius = size * 0.45;
+  const rimRadius = headRadius * 0.85;
+  const needleLength = size * 1.1;
 
   ctx.save();
 
+
+  const strokeWidth = Math.max(1.25, Math.round(r * 0.06));
+  ctx.lineWidth = strokeWidth;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = "rgba(0,0,0,0)";
+
   ctx.shadowColor = "rgba(0,0,0,0)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 1;
 
-  // Pin head (circle)
+  // ---- Head (top disc)
   ctx.beginPath();
-  ctx.arc(ox, oy, size * 0.55, 0, Math.PI * 2);
-  ctx.fillStyle = fill;
-  ctx.fill();
-
-  // Pin stem (triangle-ish)
-  ctx.beginPath();
-  ctx.moveTo(ox, oy + size * 0.25);
-  ctx.lineTo(ox - size * 0.35, oy + size * 0.95);
-  ctx.lineTo(ox + size * 0.35, oy + size * 0.95);
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-
-  // Outline
-  ctx.shadowBlur = 0;
-  ctx.lineWidth = Math.max(1.25, Math.round(r * 0.06));
-  ctx.strokeStyle = stroke;
-
-  ctx.beginPath();
-  ctx.arc(ox, oy, size * 0.55, 0, Math.PI * 2);
+  ctx.arc(cx, cy, headRadius, 0, Math.PI * 2);
   ctx.stroke();
 
+  // ---- Rim (inner ring)
   ctx.beginPath();
-  ctx.moveTo(ox, oy + size * 0.25);
-  ctx.lineTo(ox - size * 0.35, oy + size * 0.95);
-  ctx.lineTo(ox + size * 0.35, oy + size * 0.95);
-  ctx.closePath();
+  ctx.arc(cx, cy, rimRadius, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Inner dot
+  // ---- Needle
   ctx.beginPath();
-  ctx.arc(ox, oy, size * 0.18, 0, Math.PI * 2);
-  ctx.fillStyle = stroke;
+  ctx.moveTo(cx, cy + rimRadius * 0.9);
+  ctx.lineTo(cx, cy + rimRadius * 0.9 + needleLength);
+  ctx.stroke();
+
+    // ---- Needle tip
+  ctx.beginPath();
+  ctx.moveTo(cx - strokeWidth * 0.6, cy + rimRadius * 0.9 + needleLength);
+  ctx.lineTo(cx, cy + rimRadius * 0.9 + needleLength + strokeWidth * 1.6);
+  ctx.lineTo(cx + strokeWidth * 0.6, cy + rimRadius * 0.9 + needleLength);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // ---- Center dot (plastic reflection)
+  ctx.beginPath();
+  ctx.arc(cx, cy, headRadius * 0.18, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
