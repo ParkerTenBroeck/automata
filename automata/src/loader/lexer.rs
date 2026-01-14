@@ -1,11 +1,10 @@
 use crate::loader::{Span, Spanned};
 
-
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Default)]
-pub enum StringKind{
+pub enum StringKind {
     #[default]
     Regular,
-    Regex
+    Regex,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -60,13 +59,17 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::LSmallArrow => write!(f, "'->'"),
             Token::LBigArrow => write!(f, "'=>'"),
             Token::Comment(_) => write!(f, "<comment>"),
-            
+
             Token::Ident(ident) if f.alternate() => write!(f, "{ident:?}"),
             Token::Ident(_) => write!(f, "ident"),
-            
-            Token::String(string, kind, _) if f.alternate() => write!(f, "{}{string:?}", if *kind==StringKind::Regex {"r"} else {""}),
+
+            Token::String(string, kind, _) if f.alternate() => write!(
+                f,
+                "{}{string:?}",
+                if *kind == StringKind::Regex { "r" } else { "" }
+            ),
             Token::String(_, _, _) => write!(f, "string"),
-            
+
             Token::LineEnd => write!(f, "eol"),
         }
     }
@@ -169,12 +172,18 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                 let mut escaped = false;
                 loop {
                     match self.consume() {
-                        Some('"') => break Ok(Token::String(&self.input[start+1..self.position], StringKind::Regular, escaped)),
+                        Some('"') => {
+                            break Ok(Token::String(
+                                &self.input[start + 1..self.position],
+                                StringKind::Regular,
+                                escaped,
+                            ));
+                        }
                         None => break Err(Error::UnclosedString),
                         Some('\\') => {
                             _ = self.consume();
                             escaped = true;
-                        },
+                        }
                         _ => {}
                     }
                 }

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::*;
 
 use crate::{
@@ -32,6 +30,16 @@ dual_struct_serde! {
     }
 }
 
+#[derive(Hash, Clone, Copy, PartialEq, Eq)]
+struct Transition<'a> {
+    pub state: State<'a>,
+}
+
+struct TransitionInfo {
+    pub transition: Span,
+    pub function: Span,
+}
+
 dual_struct_serde! { {#[serde_with::serde_as]}
     #[derive(Clone, Debug)]
     pub struct Fa<'a> {
@@ -49,7 +57,7 @@ dual_struct_serde! { {#[serde_with::serde_as]}
 
         #[serde(borrow)]
         #[serde_as(as = "serde_with::Seq<(_, _)>")]
-        pub transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+        pub transitions: HashMap<TransitionFrom<'a>, Vec<TransitionTo<'a>>>,
     }
 }
 
@@ -78,7 +86,7 @@ pub struct FaCompiler<'a, 'b> {
     final_states: HashMap<State<'a>, StateInfo>,
     final_states_def: Option<Span>,
 
-    transitions: HashMap<TransitionFrom<'a>, HashSet<TransitionTo<'a>>>,
+    transitions: HashMap<TransitionFrom<'a>, HashMap<Transition<'a>, TransitionInfo>>,
 }
 
 impl<'a, 'b> FaCompiler<'a, 'b> {
@@ -160,7 +168,22 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             states: self.states,
             alphabet: self.alphabet,
             final_states: self.final_states,
-            transitions: self.transitions,
+            transitions: self
+                .transitions
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        v.into_iter()
+                            .map(|(k, v)| TransitionTo {
+                                function: v.function,
+                                state: k.state,
+                                transition: v.transition,
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
         })
     }
 
@@ -365,13 +388,17 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
                 && !self.options.non_deterministic
             {
                 self.ctx.emit_error("transition already defined for this starting point (non determinism not permitted)", item.1)
-                            .emit_info("previously defined here", entry.transition);
+                            .emit_info("previously defined here", entry.1.transition);
             }
-            if let Some(previous) = entry.replace(TransitionTo {
-                state: State(next_state.0),
-                function,
-                transition: item.1,
-            }) {
+            if let Some(previous) = entry.insert(
+                Transition {
+                    state: State(next_state.0),
+                },
+                TransitionInfo {
+                    function,
+                    transition: item.1,
+                },
+            ) {
                 self.ctx
                     .emit_warning("duplicate transition", item.1)
                     .emit_info("previously defined here", previous.transition);

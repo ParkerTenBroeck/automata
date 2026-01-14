@@ -141,19 +141,26 @@ impl<'a, 'b> Parser<'a, 'b> {
         S(Tuple(items), start.join(end))
     }
 
-    fn parse_as_string(&mut self, tok: S<T<'a>>) -> S<Cow<'a, str>>{
+    fn parse_as_string(&mut self, tok: S<T<'a>>) -> S<Cow<'a, str>> {
         let (r, k, e, s) = match tok {
             S(T::String(r, k, e), s) => (r, k, e, s),
             S(t, s) => {
-                self.ctx.emit_error(format!("unexpected {:#} expected {:}", t, T::String("", Default::default(), false)), s);
-                return S("<INVALID>".into(), s)
+                self.ctx.emit_error(
+                    format!(
+                        "unexpected {:#} expected {:}",
+                        t,
+                        T::String("", Default::default(), false)
+                    ),
+                    s,
+                );
+                return S("<INVALID>".into(), s);
             }
         };
 
         S(r.into(), s)
     }
-    
-    fn parse_string(&mut self) -> S<Cow<'a, str>>{
+
+    fn parse_string(&mut self) -> S<Cow<'a, str>> {
         let tok = self.next_token();
         self.parse_as_string(tok)
     }
@@ -246,7 +253,7 @@ impl<'a, 'b> Parser<'a, 'b> {
         todo!()
     }
 
-    fn parse_as_production_unit(&mut self, tok: S<T<'a>>) -> S<ProductionUnit<'a>>{
+    fn parse_as_production_unit(&mut self, tok: S<T<'a>>) -> S<ProductionUnit<'a>> {
         match tok {
             S(T::Tilde, r) => S(ProductionUnit::Epsilon("~"), r),
             S(T::Ident(repr @ epsilon!(pat)), r) => S(ProductionUnit::Epsilon(repr), r),
@@ -266,15 +273,17 @@ impl<'a, 'b> Parser<'a, 'b> {
                 S(ProductionUnit::Ident("<INVALID>"), span)
             }
         }
-
     }
-    
-    fn parse_production_unit(&mut self) -> S<ProductionUnit<'a>>{
+
+    fn parse_production_unit(&mut self) -> S<ProductionUnit<'a>> {
         let tok = self.next_token();
         self.parse_as_production_unit(tok)
     }
 
-    fn parse_production_rule(&mut self, S(sym, start): S<ProductionUnit<'a>>) -> Option<S<TopLevel<'a>>> {
+    fn parse_production_rule(
+        &mut self,
+        S(sym, start): S<ProductionUnit<'a>>,
+    ) -> Option<S<TopLevel<'a>>> {
         let mut lhs_group = ProductionGroup(vec![S(sym, start)]);
         let mut lhs_group_end = start;
         while !matches!(self.peek_token().0, T::LSmallArrow | T::LineEnd) {
