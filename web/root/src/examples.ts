@@ -104,7 +104,7 @@ d(qc, c) = qc
   new Example(
     "Tutorial",
     "DPDA Final State",
-    `// Accept strings over a,b of the form a^nb^k n != k n,k > 0
+    `// Accept strings over a,b of the form a^nb^k where n != k and n,k > 0
 
 type   = DPDA
 Q      = {q0, qas, qeq, qmb, qlb} // states
@@ -122,7 +122,7 @@ d(qas, b, z0) = (qeq, z0)
 d(qas, a, A) = (qas, [A A])
 d(qas, b, A) = (qlb, ~)
 
-d(qlb, b, A) = (qeq, ~)
+d(qlb, b, A) = (qlb, ~)
 d(qlb, b, z0) = (qeq, z0)
 
 d(qeq, b, z0) = (qmb, z0)
