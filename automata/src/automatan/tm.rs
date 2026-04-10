@@ -413,6 +413,13 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                     .emit_error("transition state not defined as state", to_state.1);
                 continue;
             };
+            if !self.symbols.contains_key(&Symbol(to_tape.0)) {
+                self.ctx.emit_error(
+                    "transition tape symbol not defined as tape symbol",
+                    to_tape.1,
+                );
+                return;
+            };
 
             let entry: &mut _ = self
                 .transitions

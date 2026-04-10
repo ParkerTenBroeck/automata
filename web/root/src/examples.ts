@@ -369,7 +369,7 @@ d(q1, b, B)         =   { (q1, epsilon) }`,
   ),
 
   new Example("TM", "a^nb^n",
-    `// accepts all strings on {a,b}+ of the form anbn
+    `// accepts all strings on {a,b}+ of the form a^n^bn
 
 type = TM
 Q = { q0, q1, q2, q3, q4 } // set of internal states
@@ -378,18 +378,19 @@ T = { a, b, X, Y, B }      // tape alphabet
 B = B                      // the blank symbol (tape initializer symbol)
 q0 = q0                    // initial state
 
-d(q0,a)=(q1,x,R)
+d(q0,a)=(q1,X,R)
 d(q1,a)=(q1,a,R)
-d(q1,Y)=(q1,y,R)
-d(q1,b)=(q2,y,L) 
+d(q1,Y)=(q1,Y,R)
+d(q1,b)=(q2,Y,L) 
 
-d(q2,Y)=(q2,y,L)
+d(q2,Y)=(q2,Y,L)
 d(q2,a)=(q2,a,L)
-d(q2,X)=(q0,x,R)
+d(q2,X)=(q0,X,R)
 
-d(q0,Y)=(q3,y,R)
-d(q3,Y)=(q3,y,R)
+d(q0,Y)=(q3,Y,R)
+d(q3,Y)=(q3,Y,R)
 d(q3,B)=(q4,B,R)
+
 `),
 
 //   new Example("CFG", "definition",
