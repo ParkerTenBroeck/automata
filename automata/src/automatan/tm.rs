@@ -253,7 +253,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if let Some(previous) = self
@@ -282,7 +282,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if let Some(previous) = self
@@ -311,7 +311,7 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if self.states.contains_key(&State(ident)) {
@@ -413,6 +413,13 @@ impl<'a, 'b> TmCompiler<'a, 'b> {
                     .emit_error("transition state not defined as state", to_state.1);
                 continue;
             };
+            if !self.symbols.contains_key(&Symbol(to_tape.0)) {
+                self.ctx.emit_error(
+                    "transition tape symbol not defined as tape symbol",
+                    to_tape.1,
+                );
+                return;
+            };
 
             let entry: &mut _ = self
                 .transitions
@@ -452,11 +459,11 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
         ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, Spanned<&'a str>)> {
         match &self.0.0[..] {
-            [
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(state)), state_span),
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(tape)), tape_span),
-            ] => {
-                return Some((Spanned(state, *state_span), Spanned(*tape, *tape_span)));
+            [state, tape]
+                if let Some(state) = state.string_weak()
+                    && let Some(tape) = tape.string_weak() =>
+            {
+                return Some((state, tape));
             }
             _ => _ = ctx.emit_error("expected TM transition function (state, symbol)", self.1),
         }
@@ -468,28 +475,25 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
         ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, Spanned<&'a str>, Spanned<Direction>)> {
         match &self.0.0[..] {
-            [
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(state)), state_span),
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(tape)), tape_span),
-                Spanned(ast::Item::Symbol(direction), direction_span),
-            ] => {
-                let direction = match direction {
+            [state, tape, direction]
+                if let Some(state) = state.string_weak()
+                    && let Some(tape) = tape.string_weak()
+                    && let Some(direction) = direction.sym_weak() =>
+            {
+                let direction_span = direction.1;
+                let direction = match direction.0 {
                     ast::Symbol::Ident("left" | "L" | "<") => Direction::Left,
                     ast::Symbol::Ident("right" | "R" | ">") => Direction::Right,
                     ast::Symbol::Epsilon(_) | ast::Symbol::Ident("~") => Direction::None,
                     ast::Symbol::Ident(ident) => {
                         ctx.emit_error(
                             format!("invalid direction specified '{ident}'"),
-                            *direction_span,
+                            direction.1,
                         );
                         Direction::None
                     }
                 };
-                return Some((
-                    Spanned(state, *state_span),
-                    Spanned(*tape, *tape_span),
-                    Spanned(direction, *direction_span),
-                ));
+                return Some((state, tape, Spanned(direction, direction_span)));
             }
             _ => {
                 _ = ctx.emit_error(

@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use automata::{
-    automatan::{fa::Fa, pda::Pda, tm::Tm}, delta_lower, epsilon, gamma_upper, loader::{self, Context, Machine, Span, Spanned, lexer::Lexer}, sigma_upper
+    automatan::{fa::Fa, pda::Pda, tm::Tm},
+    delta_lower, epsilon, gamma_upper,
+    loader::{self, Context, Machine, Span, Spanned, lexer::Lexer},
+    sigma_upper,
 };
 
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -148,57 +151,86 @@ pub struct CompileResult {
     pub machine: Option<String>,
 }
 
-trait FixupSpan{
+trait FixupSpan {
     fn fixup(&mut self, func: impl FnMut(Span) -> Span);
 }
 
-impl<'a> FixupSpan for Machine<'a>{
+impl<'a> FixupSpan for Machine<'a> {
     fn fixup(&mut self, func: impl FnMut(Span) -> Span) {
-        match self{
+        match self {
             Machine::Fa(fa) => fa.fixup(func),
             Machine::Pda(pda) => pda.fixup(func),
             Machine::Tm(tm) => tm.fixup(func),
         }
     }
 }
-impl<'a> FixupSpan for Fa<'a>{
+impl<'a> FixupSpan for Fa<'a> {
     fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
-        self.alphabet.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.final_states.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
-            e.transition = func(e.transition);
-            e.function = func(e.function);
-        });
+        self.alphabet
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.states
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.final_states
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.transitions
+            .values_mut()
+            .flat_map(|v| v.iter_mut())
+            .for_each(|e| {
+                e.transition = func(e.transition);
+                e.function = func(e.function);
+            });
     }
 }
 
-impl<'a> FixupSpan for Pda<'a>{
+impl<'a> FixupSpan for Pda<'a> {
     fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
-        self.alphabet.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.symbols.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.final_states.as_mut().unwrap_or(&mut HashMap::new()).values_mut().for_each(|v| v.definition = func(v.definition));
-        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
-            e.transition = func(e.transition);
-            e.function = func(e.function);
-        });
+        self.alphabet
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.states
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.symbols
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.final_states
+            .as_mut()
+            .unwrap_or(&mut HashMap::new())
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.transitions
+            .values_mut()
+            .flat_map(|v| v.iter_mut())
+            .for_each(|e| {
+                e.transition = func(e.transition);
+                e.function = func(e.function);
+            });
     }
 }
 
-impl<'a> FixupSpan for Tm<'a>{
+impl<'a> FixupSpan for Tm<'a> {
     fn fixup(&mut self, mut func: impl FnMut(Span) -> Span) {
-        self.states.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.symbols.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.final_states.values_mut().for_each(|v| v.definition = func(v.definition));
-        self.transitions.values_mut().flat_map(|v|v.iter_mut()).for_each(|e|{
-            e.transition = func(e.transition);
-            e.function = func(e.function);
-        });
+        self.states
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.symbols
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.final_states
+            .values_mut()
+            .for_each(|v| v.definition = func(v.definition));
+        self.transitions
+            .values_mut()
+            .flat_map(|v| v.iter_mut())
+            .for_each(|e| {
+                e.transition = func(e.transition);
+                e.function = func(e.function);
+            });
     }
 }
-
-
 
 #[wasm_bindgen]
 pub fn compile(input: &str) -> CompileResult {
@@ -206,7 +238,12 @@ pub fn compile(input: &str) -> CompileResult {
     let result = automata::loader::parse_universal(&mut ctx);
 
     let machine = result.map(|mut result| {
-        result.fixup(|span|Span(input[..span.0].chars().map(char::len_utf16).sum(), input[..span.1].chars().map(char::len_utf16).sum()));
+        result.fixup(|span| {
+            Span(
+                input[..span.0].chars().map(char::len_utf16).sum(),
+                input[..span.1].chars().map(char::len_utf16).sum(),
+            )
+        });
         serde_json::to_string(&result).unwrap()
     });
 

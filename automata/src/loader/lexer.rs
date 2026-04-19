@@ -174,7 +174,7 @@ impl<'a> std::iter::Iterator for Lexer<'a> {
                     match self.consume() {
                         Some('"') => {
                             break Ok(Token::String(
-                                &self.input[start + 1..self.position],
+                                &self.input[start + 1..self.position-1],
                                 StringKind::Regular,
                                 escaped,
                             ));

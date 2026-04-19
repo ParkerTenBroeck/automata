@@ -317,7 +317,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
                 .emit_error("accept by already set", top_level)
                 .emit_info("previously defined here", previous);
         }
-        let Some(by) = item.expect_ident(self.ctx) else {
+        let Some(by) = item.expect_ident_weak(self.ctx) else {
             return;
         };
 
@@ -343,7 +343,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if let Some(previous) = self
@@ -372,7 +372,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if let Some(previous) = self
@@ -401,7 +401,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
 
@@ -435,7 +435,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if self.states.contains_key(&State(ident)) {
@@ -562,7 +562,7 @@ impl<'a, 'b> PdaCompiler<'a, 'b> {
                     if matches!(symbol.0, ast::Item::Symbol(Sym::Epsilon(_))) {
                         return None;
                     }
-                    let ident = symbol.expect_ident(self.ctx)?;
+                    let ident = symbol.expect_ident_weak(self.ctx)?;
 
                     if !self.symbols.contains_key(&Symbol(ident)) {
                         self.ctx
@@ -611,16 +611,12 @@ impl<'a, 'b> Spanned<&'b ast::Tuple<'a>> {
         ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, Spanned<ast::Symbol<'a>>, Spanned<&'a str>)> {
         match &self.0.0[..] {
-            [
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(state)), state_span),
-                Spanned(ast::Item::Symbol(letter), letter_span),
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(symbol)), symbol_span),
-            ] => {
-                return Some((
-                    Spanned(state, *state_span),
-                    Spanned(*letter, *letter_span),
-                    Spanned(symbol, *symbol_span),
-                ));
+            [state, letter, symbol]
+                if let Some(state) = state.string_weak()
+                    && let Some(letter) = letter.sym_weak()
+                    && let Some(symbol) = symbol.string_weak() =>
+            {
+                return Some((state, letter, symbol));
             }
             _ => {
                 _ = ctx.emit_error(
@@ -636,11 +632,8 @@ impl<'a, 'b> Spanned<&'b ast::Tuple<'a>> {
         ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, &'b [Spanned<ast::Item<'a>>])> {
         match &self.0.0[..] {
-            [
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(state)), state_span),
-                list,
-            ] => {
-                return Some((Spanned(state, *state_span), list.list_weak()));
+            [state, list] if let Some(state) = state.string_weak() => {
+                return Some((state, list.list_weak()));
             }
             _ => _ = ctx.emit_error("expected PDA transition (state, symbol|[symbol])", self.1),
         }
