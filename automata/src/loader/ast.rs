@@ -23,7 +23,7 @@ pub enum Symbol<'a> {
 #[derive(Clone, Debug)]
 pub enum Item<'a> {
     Symbol(Symbol<'a>),
-    String(Cow<'a, str>),
+    String(&'a str),
     Tuple(Tuple<'a>),
     List(List<'a>),
 }
@@ -50,7 +50,7 @@ pub struct List<'a>(pub Vec<Spanned<Item<'a>>>, pub ListKind);
 pub enum ProductionUnit<'a> {
     Epsilon(&'a str),
     Ident(&'a str),
-    String(Cow<'a, str>),
+    String(&'a str),
 }
 
 #[derive(Clone, Debug)]
@@ -73,7 +73,7 @@ pub enum TopLevel<'a> {
 use crate::loader::{Context, log::LogSink};
 
 impl<'a> Spanned<Item<'a>> {
-    pub fn expect_symbol(&self, ctx: &mut Context<'a>) -> Option<Symbol<'a>> {
+    pub fn expect_symbol_weak(&self, ctx: &mut Context<'a>) -> Option<Symbol<'a>> {
         match &self.0 {
             Item::Symbol(sym) => return Some(*sym),
             Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
@@ -83,15 +83,15 @@ impl<'a> Spanned<Item<'a>> {
         None
     }
 
-    pub fn expect_ident(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
+    pub fn expect_ident_weak(&self, ctx: &mut Context<'a>) -> Option<&'a str> {
         match &self.0 {
             Item::Symbol(Symbol::Ident(ident)) => return Some(ident),
+            Item::String(string) => _ = return Some(*string),
             Item::Symbol(Symbol::Epsilon(_)) => {
-                _ = ctx.emit_error("expected ident found epsilon", self.1)
+                _ = ctx.emit_error("expected ident/string found epsilon", self.1)
             }
-            Item::Tuple(_) => _ = ctx.emit_error("expected ident found tuple", self.1),
-            Item::List(_) => _ = ctx.emit_error("expected ident found list", self.1),
-            Item::String(_) => _ = ctx.emit_error("expected ident found string", self.1),
+            Item::Tuple(_) => _ = ctx.emit_error("expected ident/string found tuple", self.1),
+            Item::List(_) => _ = ctx.emit_error("expected ident/string found list", self.1),
         }
         None
     }
@@ -137,6 +137,25 @@ impl<'a> Spanned<Item<'a>> {
         match &self.0 {
             Item::List(list) => &list.0,
             _ => std::slice::from_ref(self),
+        }
+    }
+
+    pub fn string_weak(&self) -> Option<Spanned<&'a str>> {
+        match &self.0 {
+            Item::Symbol(Symbol::Ident(ident)) => Some(Spanned(ident, self.1)),
+            Item::Symbol(_) => None,
+            Item::String(ident) => Some(Spanned(ident, self.1)),
+            Item::Tuple(_) => None,
+            Item::List(_) => None,
+        }
+    }
+
+    pub fn sym_weak(&self) -> Option<Spanned<Symbol<'a>>> {
+        match &self.0 {
+            Item::Symbol(symbol) => Some(Spanned(*symbol, self.1)),
+            Item::String(ident) => Some(Spanned(Symbol::Ident(ident), self.1)),
+            Item::Tuple(_) => None,
+            Item::List(_) => None,
         }
     }
 

@@ -229,7 +229,7 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if let Some(previous) = self
@@ -258,7 +258,7 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
 
@@ -292,7 +292,7 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
             return;
         };
         for item in list {
-            let Some(ident) = item.expect_ident(self.ctx) else {
+            let Some(ident) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             if self.states.contains_key(&State(ident)) {
@@ -366,7 +366,7 @@ impl<'a, 'b> FaCompiler<'a, 'b> {
         };
 
         for item in list {
-            let Some(next_state) = item.expect_ident(self.ctx) else {
+            let Some(next_state) = item.expect_ident_weak(self.ctx) else {
                 continue;
             };
             let next_state = Spanned(next_state, item.1);
@@ -413,11 +413,11 @@ impl<'a> Spanned<&ast::Tuple<'a>> {
         ctx: &mut Context<'a>,
     ) -> Option<(Spanned<&'a str>, Spanned<ast::Symbol<'a>>)> {
         match &self.0.0[..] {
-            [
-                Spanned(ast::Item::Symbol(ast::Symbol::Ident(state)), state_span),
-                Spanned(ast::Item::Symbol(letter), letter_span),
-            ] => {
-                return Some((Spanned(state, *state_span), Spanned(*letter, *letter_span)));
+            [state, letter]
+                if let Some(state) = state.string_weak()
+                    && let Some(letter) = letter.sym_weak() =>
+            {
+                return Some((state, letter));
             }
             _ => {
                 _ = ctx.emit_error(

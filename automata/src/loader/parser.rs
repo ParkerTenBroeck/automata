@@ -141,7 +141,7 @@ impl<'a, 'b> Parser<'a, 'b> {
         S(Tuple(items), start.join(end))
     }
 
-    fn parse_as_string(&mut self, tok: S<T<'a>>) -> S<Cow<'a, str>> {
+    fn parse_as_string(&mut self, tok: S<T<'a>>) -> S<&'a str> {
         let (r, k, e, s) = match tok {
             S(T::String(r, k, e), s) => (r, k, e, s),
             S(t, s) => {
@@ -160,7 +160,7 @@ impl<'a, 'b> Parser<'a, 'b> {
         S(r.into(), s)
     }
 
-    fn parse_string(&mut self) -> S<Cow<'a, str>> {
+    fn parse_string(&mut self) -> S<&'a str> {
         let tok = self.next_token();
         self.parse_as_string(tok)
     }

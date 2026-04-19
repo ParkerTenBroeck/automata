@@ -152,7 +152,7 @@ pub fn parse_universal<'a>(ctx: &mut Context<'a>) -> Option<Machine<'a>> {
     fn parse_type<'a>(item: Option<S<TopLevel<'a>>>, ctx: &mut Context<'a>) -> Option<Type> {
         let (str, span) = match item {
             Some(S(TopLevel::Item(S("type", _), item @ S(_, span)), _)) => {
-                (item.expect_ident(ctx)?, span)
+                (item.expect_ident_weak(ctx)?, span)
             }
             Some(S(_, span)) => {
                 ctx.emit_error("expected type=<type> as first item", span)

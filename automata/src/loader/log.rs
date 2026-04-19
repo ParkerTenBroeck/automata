@@ -231,11 +231,11 @@ impl<'a> Display for LogEntryDisplay<'a> {
                     }
                     for grapheme in line.graphemes(true) {
                         if (span.0..span.1).contains(&index) {
-                            for _ in 0..width(grapheme){
+                            for _ in 0..width(grapheme) {
                                 write!(f, "~")?;
                             }
                         } else {
-                            for _ in 0..width(grapheme){
+                            for _ in 0..width(grapheme) {
                                 write!(f, " ")?;
                             }
                         }
